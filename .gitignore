@@ -1,0 +1,7 @@
+*.m4
+configure
+autom4te.cache
+scripts/*
+m4/*
+build/*
+
