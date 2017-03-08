@@ -36,42 +36,23 @@ for idx, arc in enumerate(arcs):
     state = arc[0]
     if state_arcidx[state] == -1:
         state_arcidx[state] = idx
-
-print(state_number, state_arcidx[: 10])
 assert(len(state_arcidx) == len(t) and len(finals) == len(t))
 
 
 file_size = 0
 with open(sys.argv[2], 'wb') as fd:
     # Magic number
-    b = struct.pack("<i", 0x3323)
-    file_size += len(b)
-    fd.write(b)
+    fd.write(struct.pack("<i", 0x3323))
     
-    b = struct.pack("<i", state_number)
-    file_size += len(b)
-    fd.write(b)
-
-    b = struct.pack("<i", start_state)
-    file_size += len(b)
-    fd.write(b)
+    fd.write(struct.pack("<i", state_number))
+    fd.write(struct.pack("<i", len(arcs)))
+    fd.write(struct.pack("<i", start_state))
 
     for final in finals:
-        b = struct.pack("<f", final)
-        file_size += len(b)
-        fd.write(b)
+        fd.write(struct.pack("<f", final))
     for arcidx in state_arcidx:
-        b = struct.pack("<f", arcidx)
-        file_size += len(b)
-        fd.write(b)
+        fd.write(struct.pack("<i", arcidx))
     for arc in arcs:
-        b = struct.pack("<iiif", arc[1], arc[2], arc[3], arc[4])
-        file_size += len(b)
-        fd.write(b)
+        fd.write(struct.pack("<iiif", arc[1], arc[2], arc[3], arc[4]))
 
-    # Magic number
-    b = struct.pack("<i", 0x3325)
-    file_size += len(b)
-    fd.write(b)
-
-print(file_size)
+print("Success")

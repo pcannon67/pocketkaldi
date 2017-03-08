@@ -40,7 +40,11 @@ typedef struct {
   pk_alloc_t *alloc;
 } pk_decoder_result_t;
 
+// Destroy the pk_decoder_result_t.
 void pk_decoder_result_destroy(pk_decoder_result_t *best_path);
+
+
+
 
 namespace kaldi {
 

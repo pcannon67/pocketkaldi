@@ -88,8 +88,9 @@ NORMAL_UNINSTALL = :
 PRE_UNINSTALL = :
 POST_UNINSTALL = :
 bin_PROGRAMS = main$(EXEEXT)
-TESTS = hashlist_test$(EXEEXT) vector_test$(EXEEXT)
-check_PROGRAMS = hashlist_test$(EXEEXT) vector_test$(EXEEXT)
+TESTS = hashlist_test$(EXEEXT) vector_test$(EXEEXT) fst_test$(EXEEXT)
+check_PROGRAMS = hashlist_test$(EXEEXT) vector_test$(EXEEXT) \
+	fst_test$(EXEEXT)
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/configure.ac
@@ -142,9 +143,14 @@ libpocketkaldi_a_AR = $(AR) $(ARFLAGS)
 libpocketkaldi_a_LIBADD =
 am__dirstamp = $(am__leading_dot)dirstamp
 am_libpocketkaldi_a_OBJECTS = src/alloc.$(OBJEXT) \
-	src/hashlist.$(OBJEXT)
+	src/hashlist.$(OBJEXT) src/util.$(OBJEXT) src/fst.$(OBJEXT)
 libpocketkaldi_a_OBJECTS = $(am_libpocketkaldi_a_OBJECTS)
 PROGRAMS = $(bin_PROGRAMS)
+am_fst_test_OBJECTS = test/fst_test-fst_test.$(OBJEXT)
+fst_test_OBJECTS = $(am_fst_test_OBJECTS)
+fst_test_DEPENDENCIES = libpocketkaldi.a
+fst_test_LINK = $(CXXLD) $(fst_test_CXXFLAGS) $(CXXFLAGS) \
+	$(AM_LDFLAGS) $(LDFLAGS) -o $@
 am_hashlist_test_OBJECTS = test/hashlist_test-hashlist_test.$(OBJEXT)
 hashlist_test_OBJECTS = $(am_hashlist_test_OBJECTS)
 hashlist_test_DEPENDENCIES = libpocketkaldi.a
@@ -217,10 +223,12 @@ AM_V_CXXLD = $(am__v_CXXLD_@AM_V@)
 am__v_CXXLD_ = $(am__v_CXXLD_@AM_DEFAULT_V@)
 am__v_CXXLD_0 = @echo "  CXXLD   " $@;
 am__v_CXXLD_1 = 
-SOURCES = $(libpocketkaldi_a_SOURCES) $(hashlist_test_SOURCES) \
-	$(main_SOURCES) $(vector_test_SOURCES)
-DIST_SOURCES = $(libpocketkaldi_a_SOURCES) $(hashlist_test_SOURCES) \
-	$(main_SOURCES) $(vector_test_SOURCES)
+SOURCES = $(libpocketkaldi_a_SOURCES) $(fst_test_SOURCES) \
+	$(hashlist_test_SOURCES) $(main_SOURCES) \
+	$(vector_test_SOURCES)
+DIST_SOURCES = $(libpocketkaldi_a_SOURCES) $(fst_test_SOURCES) \
+	$(hashlist_test_SOURCES) $(main_SOURCES) \
+	$(vector_test_SOURCES)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -549,7 +557,9 @@ main_SOURCES = src/main.cc \
 
 lib_LIBRARIES = libpocketkaldi.a
 libpocketkaldi_a_SOURCES = src/alloc.c \
-                           src/hashlist.c
+                           src/hashlist.c \
+                           src/util.c \
+                           src/fst.c
 
 main_LDADD = ../../kaldi/src/decoder/kaldi-decoder.a \
               ../../kaldi/src/lat/kaldi-lat.a \
@@ -577,6 +587,9 @@ hashlist_test_LDADD = libpocketkaldi.a
 vector_test_SOURCES = test/vector_test.cc
 vector_test_CXXFLAGS = $(AM_CXXFLAGS) -std=c++11 -I$(top_srcdir)/src
 vector_test_LDADD = libpocketkaldi.a
+fst_test_SOURCES = test/fst_test.cc
+fst_test_CXXFLAGS = $(AM_CXXFLAGS) -std=c++11 -I$(top_srcdir)/src -DTESTDIR=\"$(top_srcdir)/test/\"
+fst_test_LDADD = libpocketkaldi.a
 all: all-am
 
 .SUFFIXES:
@@ -669,6 +682,8 @@ src/$(DEPDIR)/$(am__dirstamp):
 src/alloc.$(OBJEXT): src/$(am__dirstamp) src/$(DEPDIR)/$(am__dirstamp)
 src/hashlist.$(OBJEXT): src/$(am__dirstamp) \
 	src/$(DEPDIR)/$(am__dirstamp)
+src/util.$(OBJEXT): src/$(am__dirstamp) src/$(DEPDIR)/$(am__dirstamp)
+src/fst.$(OBJEXT): src/$(am__dirstamp) src/$(DEPDIR)/$(am__dirstamp)
 
 libpocketkaldi.a: $(libpocketkaldi_a_OBJECTS) $(libpocketkaldi_a_DEPENDENCIES) $(EXTRA_libpocketkaldi_a_DEPENDENCIES) 
 	$(AM_V_at)-rm -f libpocketkaldi.a
@@ -725,6 +740,12 @@ test/$(am__dirstamp):
 test/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) test/$(DEPDIR)
 	@: > test/$(DEPDIR)/$(am__dirstamp)
+test/fst_test-fst_test.$(OBJEXT): test/$(am__dirstamp) \
+	test/$(DEPDIR)/$(am__dirstamp)
+
+fst_test$(EXEEXT): $(fst_test_OBJECTS) $(fst_test_DEPENDENCIES) $(EXTRA_fst_test_DEPENDENCIES) 
+	@rm -f fst_test$(EXEEXT)
+	$(AM_V_CXXLD)$(fst_test_LINK) $(fst_test_OBJECTS) $(fst_test_LDADD) $(LIBS)
 test/hashlist_test-hashlist_test.$(OBJEXT): test/$(am__dirstamp) \
 	test/$(DEPDIR)/$(am__dirstamp)
 
@@ -754,9 +775,12 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/alloc.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/fst.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/hashlist.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/main.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/pk-simple-decoder.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/util.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/fst_test-fst_test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/hashlist_test-hashlist_test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/vector_test-vector_test.Po@am__quote@
 
@@ -791,6 +815,20 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXXCOMPILE) -c -o $@ `$(CYGPATH_W) '$<'`
+
+test/fst_test-fst_test.o: test/fst_test.cc
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fst_test_CXXFLAGS) $(CXXFLAGS) -MT test/fst_test-fst_test.o -MD -MP -MF test/$(DEPDIR)/fst_test-fst_test.Tpo -c -o test/fst_test-fst_test.o `test -f 'test/fst_test.cc' || echo '$(srcdir)/'`test/fst_test.cc
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) test/$(DEPDIR)/fst_test-fst_test.Tpo test/$(DEPDIR)/fst_test-fst_test.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='test/fst_test.cc' object='test/fst_test-fst_test.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fst_test_CXXFLAGS) $(CXXFLAGS) -c -o test/fst_test-fst_test.o `test -f 'test/fst_test.cc' || echo '$(srcdir)/'`test/fst_test.cc
+
+test/fst_test-fst_test.obj: test/fst_test.cc
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fst_test_CXXFLAGS) $(CXXFLAGS) -MT test/fst_test-fst_test.obj -MD -MP -MF test/$(DEPDIR)/fst_test-fst_test.Tpo -c -o test/fst_test-fst_test.obj `if test -f 'test/fst_test.cc'; then $(CYGPATH_W) 'test/fst_test.cc'; else $(CYGPATH_W) '$(srcdir)/test/fst_test.cc'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) test/$(DEPDIR)/fst_test-fst_test.Tpo test/$(DEPDIR)/fst_test-fst_test.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='test/fst_test.cc' object='test/fst_test-fst_test.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fst_test_CXXFLAGS) $(CXXFLAGS) -c -o test/fst_test-fst_test.obj `if test -f 'test/fst_test.cc'; then $(CYGPATH_W) 'test/fst_test.cc'; else $(CYGPATH_W) '$(srcdir)/test/fst_test.cc'; fi`
 
 test/hashlist_test-hashlist_test.o: test/hashlist_test.cc
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(hashlist_test_CXXFLAGS) $(CXXFLAGS) -MT test/hashlist_test-hashlist_test.o -MD -MP -MF test/$(DEPDIR)/hashlist_test-hashlist_test.Tpo -c -o test/hashlist_test-hashlist_test.o `test -f 'test/hashlist_test.cc' || echo '$(srcdir)/'`test/hashlist_test.cc
@@ -1030,6 +1068,13 @@ hashlist_test.log: hashlist_test$(EXEEXT)
 vector_test.log: vector_test$(EXEEXT)
 	@p='vector_test$(EXEEXT)'; \
 	b='vector_test'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
+fst_test.log: fst_test$(EXEEXT)
+	@p='fst_test$(EXEEXT)'; \
+	b='fst_test'; \
 	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
