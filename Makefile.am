@@ -11,7 +11,8 @@ libpocketkaldi_a_SOURCES = src/alloc.c \
                            src/hashlist.c \
                            src/util.c \
                            src/fst.c \
-                           src/decoder.cc 
+                           src/decoder.cc \
+                           src/srfft.c
 
 main_LDADD = ../../kaldi/src/decoder/kaldi-decoder.a \
               ../../kaldi/src/lat/kaldi-lat.a \
@@ -33,8 +34,8 @@ main_LDADD = ../../kaldi/src/decoder/kaldi-decoder.a \
               libpocketkaldi.a \
               -ldl
 
-TESTS = hashlist_test vector_test fst_test
-check_PROGRAMS = hashlist_test vector_test fst_test
+TESTS = hashlist_test vector_test fst_test srfft_test
+check_PROGRAMS = hashlist_test vector_test fst_test srfft_test
 
 hashlist_test_SOURCES = test/hashlist_test.cc
 hashlist_test_CXXFLAGS = $(AM_CXXFLAGS) -std=c++11 -I$(top_srcdir)/src
@@ -47,3 +48,7 @@ vector_test_LDADD = libpocketkaldi.a
 fst_test_SOURCES = test/fst_test.cc
 fst_test_CXXFLAGS = $(AM_CXXFLAGS) -std=c++11 -I$(top_srcdir)/src -DTESTDIR=\"$(top_srcdir)/test/\"
 fst_test_LDADD = libpocketkaldi.a
+
+srfft_test_SOURCES = test/srfft_test.cc
+srfft_test_CXXFLAGS = $(AM_CXXFLAGS) -std=c++11 -I$(top_srcdir)/src
+srfft_test_LDADD = libpocketkaldi.a
