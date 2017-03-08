@@ -44,7 +44,7 @@ static bool check_tag(char **ptr, const char *expected) {
 // the data into data. If any error occured, set status to failed
 void pk_16kpcm_read(
     const char *filename,
-    pk_16kpcm_t *pcm_data,
+    pk_vector_t *pcm_data,
     pk_status_t *status) {
   FILE *fd = fopen(filename, "rb");
   if (fd == NULL) {
@@ -227,8 +227,7 @@ void pk_16kpcm_read(
   // Read data
   if (status->ok) {
     int num_samples = (int)subchunk2_size / (bits_per_sample / 8);
-    pcm_data->data = (float *)pk_alloc(num_samples * sizeof(float));
-    pcm_data->num_samples = num_samples;
+    pk_vector_resize(pcm_data, num_samples);
     for (int i = 0; i < num_samples && status->ok; ++i) {
       switch (bits_per_sample) {
         case 8:

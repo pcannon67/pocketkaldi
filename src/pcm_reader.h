@@ -26,18 +26,14 @@
 
 #include <stdint.h>
 #include "util.h"
-
-typedef struct pk_16kpcm_t {
-  float *data;
-  int num_samples;
-} pk_16kpcm_t;
+#include "matrix.h"
 
 // Reads 16k sampling rate, mono-channel, PCM formatted wave file, and stores
-// the data into data. If any error occured, set status to failed
+// the data into pcm_data. If any error occured, set status to failed
 POCKETKALDI_EXPORT
 void pk_16kpcm_read(
     const char *filename,
-    pk_16kpcm_t *pcm_data,
+    pk_vector_t *pcm_data,
     pk_status_t *status);
 
 #endif

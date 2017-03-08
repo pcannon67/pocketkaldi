@@ -10,8 +10,8 @@ void TestFst() {
   pk_status_t status;
 
   pk_status_init(&status);
-  pk_fst_read(&fst, TESTDIR "testinput.fst", &status);
-  puts(TESTDIR "testinput.fst");
+  pk_fst_read(&fst, TESTDIR "data/testinput.fst", &status);
+  puts(TESTDIR "data/testinput.fst");
   assert(status.ok);
 
   assert(pk_fst_startstate(&fst) == 0);

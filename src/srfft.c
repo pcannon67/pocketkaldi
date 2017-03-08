@@ -88,8 +88,11 @@ static void compute_tables(pk_srfft_t *self) {
   }
 }
 
-static void
-complexfft_compute_recursive(pk_srfft_t *self, float *xr, float *xi, int logn) {
+static void complexfft_compute_recursive(
+    const pk_srfft_t *self,
+    float *xr,
+    float *xi,
+    int logn) {
   int m, m2, m4, m8, nel, n;
   float *xr1, *xr2, *xi1, *xi2;
   float *cn, *spcn, *smcn, *c3n, *spc3n, *smc3n;
@@ -230,7 +233,10 @@ complexfft_compute_recursive(pk_srfft_t *self, float *xr, float *xi, int logn) {
 }
 
 static void 
-complexfft_bit_reverse_permute(pk_srfft_t *self, float *x, int logn)  {
+complexfft_bit_reverse_permute(
+    const pk_srfft_t *self,
+    float *x,
+    int logn)  {
   int i, j, lg2, n;
   int off, fj, gno, *brp;
   float tmp, *xp, *xq;
@@ -254,8 +260,11 @@ complexfft_bit_reverse_permute(pk_srfft_t *self, float *x, int logn)  {
   }
 }
 
-static void
-complexfft_compute2(pk_srfft_t *self, float *xr, float *xi, bool forward) {
+static void complexfft_compute2(
+    const pk_srfft_t *self,
+    float *xr,
+    float *xi,
+    bool forward) {
   if (!forward) {  // reverse real and imaginary parts for complex FFT.
     float *tmp = xr;
     xr = xi;
@@ -271,7 +280,7 @@ complexfft_compute2(pk_srfft_t *self, float *xr, float *xi, bool forward) {
 
 static void
 complexfft_compute(
-    pk_srfft_t *self,
+    const pk_srfft_t *self,
     float *x,
     int xsize,
     bool forward,
@@ -356,7 +365,7 @@ void pk_srfft_destroy(pk_srfft_t *self) {
 // This code is mostly the same as the RealFft function.  It would be
 // possible to replace it with more efficient code from Rico's book.
 void pk_srfft_compute(
-    pk_srfft_t *self,
+    const pk_srfft_t *self,
     float *data,
     int data_size,
     bool forward,

@@ -36,7 +36,7 @@ void pk_srfft_destroy(pk_srfft_t *self);
 // `buffer` needs at least N float spaces
 POCKETKALDI_EXPORT
 void pk_srfft_compute(
-    pk_srfft_t *self,
+    const pk_srfft_t *self,
     float *data,
     int data_size,
     bool forward,
