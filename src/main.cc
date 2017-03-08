@@ -26,7 +26,7 @@
 #include "tree/context-dep.h"
 #include "hmm/transition-model.h"
 #include "fstext/fstext-lib.h"
-#include "decoder/simple-decoder.h"
+#include "pk-simple-decoder.h"
 #include "gmm/decodable-am-diag-gmm.h"
 #include "fstext/lattice-utils.h"
 #include "lat/kaldi-lattice.h"
@@ -106,7 +106,7 @@ int main(int argc, char *argv[]) {
     BaseFloat tot_like = 0.0;
     kaldi::int64 frame_count = 0;
     int num_success = 0, num_fail = 0;
-    SimpleDecoder decoder(*decode_fst, beam);
+    PkSimpleDecoder decoder(*decode_fst, beam);
 
     for (; !feature_reader.Done(); feature_reader.Next()) {
       std::string utt = feature_reader.Key();
