@@ -25,6 +25,6 @@ void pk_status_init(pk_status_t *status);
 
 // Set status to failed state with message
 POCKETKALDI_EXPORT
-void pk_status_fail(pk_status_t *status, int errcode, const char *msg);
+void pk_status_fail(pk_status_t *status, int errcode, const char *fmsg, ...);
 
 #endif  // POCKETKALDI_UTIL_H_

@@ -89,9 +89,9 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 bin_PROGRAMS = main$(EXEEXT)
 TESTS = hashlist_test$(EXEEXT) vector_test$(EXEEXT) fst_test$(EXEEXT) \
-	srfft_test$(EXEEXT)
+	srfft_test$(EXEEXT) pcm_reader_test$(EXEEXT)
 check_PROGRAMS = hashlist_test$(EXEEXT) vector_test$(EXEEXT) \
-	fst_test$(EXEEXT) srfft_test$(EXEEXT)
+	fst_test$(EXEEXT) srfft_test$(EXEEXT) pcm_reader_test$(EXEEXT)
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/configure.ac
@@ -145,7 +145,8 @@ libpocketkaldi_a_LIBADD =
 am__dirstamp = $(am__leading_dot)dirstamp
 am_libpocketkaldi_a_OBJECTS = src/alloc.$(OBJEXT) \
 	src/hashlist.$(OBJEXT) src/util.$(OBJEXT) src/fst.$(OBJEXT) \
-	src/decoder.$(OBJEXT) src/srfft.$(OBJEXT)
+	src/pcm_reader.$(OBJEXT) src/decoder.$(OBJEXT) \
+	src/srfft.$(OBJEXT)
 libpocketkaldi_a_OBJECTS = $(am_libpocketkaldi_a_OBJECTS)
 PROGRAMS = $(bin_PROGRAMS)
 am_fst_test_OBJECTS = test/fst_test-fst_test.$(OBJEXT)
@@ -175,6 +176,12 @@ main_DEPENDENCIES = ../../kaldi/src/decoder/kaldi-decoder.a \
 	/usr/lib/libf77blas.so.3 /usr/lib/libcblas.so.3 \
 	/usr/lib/liblapack_atlas.so.3 \
 	../../kaldi/tools/openfst/lib/libfst.a libpocketkaldi.a
+am_pcm_reader_test_OBJECTS =  \
+	test/pcm_reader_test-pcm_reader_test.$(OBJEXT)
+pcm_reader_test_OBJECTS = $(am_pcm_reader_test_OBJECTS)
+pcm_reader_test_DEPENDENCIES = libpocketkaldi.a
+pcm_reader_test_LINK = $(CXXLD) $(pcm_reader_test_CXXFLAGS) \
+	$(CXXFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
 am_srfft_test_OBJECTS = test/srfft_test-srfft_test.$(OBJEXT)
 srfft_test_OBJECTS = $(am_srfft_test_OBJECTS)
 srfft_test_DEPENDENCIES = libpocketkaldi.a
@@ -231,10 +238,12 @@ am__v_CXXLD_ = $(am__v_CXXLD_@AM_DEFAULT_V@)
 am__v_CXXLD_0 = @echo "  CXXLD   " $@;
 am__v_CXXLD_1 = 
 SOURCES = $(libpocketkaldi_a_SOURCES) $(fst_test_SOURCES) \
-	$(hashlist_test_SOURCES) $(main_SOURCES) $(srfft_test_SOURCES) \
+	$(hashlist_test_SOURCES) $(main_SOURCES) \
+	$(pcm_reader_test_SOURCES) $(srfft_test_SOURCES) \
 	$(vector_test_SOURCES)
 DIST_SOURCES = $(libpocketkaldi_a_SOURCES) $(fst_test_SOURCES) \
-	$(hashlist_test_SOURCES) $(main_SOURCES) $(srfft_test_SOURCES) \
+	$(hashlist_test_SOURCES) $(main_SOURCES) \
+	$(pcm_reader_test_SOURCES) $(srfft_test_SOURCES) \
 	$(vector_test_SOURCES)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
@@ -565,6 +574,7 @@ libpocketkaldi_a_SOURCES = src/alloc.c \
                            src/hashlist.c \
                            src/util.c \
                            src/fst.c \
+                           src/pcm_reader.c \
                            src/decoder.cc \
                            src/srfft.c
 
@@ -600,6 +610,9 @@ fst_test_LDADD = libpocketkaldi.a
 srfft_test_SOURCES = test/srfft_test.cc
 srfft_test_CXXFLAGS = $(AM_CXXFLAGS) -std=c++11 -I$(top_srcdir)/src
 srfft_test_LDADD = libpocketkaldi.a
+pcm_reader_test_SOURCES = test/pcm_reader_test.cc
+pcm_reader_test_CXXFLAGS = $(AM_CXXFLAGS) -std=c++11 -I$(top_srcdir)/src -DTESTDIR=\"$(top_srcdir)/test/\"
+pcm_reader_test_LDADD = libpocketkaldi.a
 all: all-am
 
 .SUFFIXES:
@@ -694,6 +707,8 @@ src/hashlist.$(OBJEXT): src/$(am__dirstamp) \
 	src/$(DEPDIR)/$(am__dirstamp)
 src/util.$(OBJEXT): src/$(am__dirstamp) src/$(DEPDIR)/$(am__dirstamp)
 src/fst.$(OBJEXT): src/$(am__dirstamp) src/$(DEPDIR)/$(am__dirstamp)
+src/pcm_reader.$(OBJEXT): src/$(am__dirstamp) \
+	src/$(DEPDIR)/$(am__dirstamp)
 src/decoder.$(OBJEXT): src/$(am__dirstamp) \
 	src/$(DEPDIR)/$(am__dirstamp)
 src/srfft.$(OBJEXT): src/$(am__dirstamp) src/$(DEPDIR)/$(am__dirstamp)
@@ -770,6 +785,12 @@ src/main.$(OBJEXT): src/$(am__dirstamp) src/$(DEPDIR)/$(am__dirstamp)
 main$(EXEEXT): $(main_OBJECTS) $(main_DEPENDENCIES) $(EXTRA_main_DEPENDENCIES) 
 	@rm -f main$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(main_OBJECTS) $(main_LDADD) $(LIBS)
+test/pcm_reader_test-pcm_reader_test.$(OBJEXT): test/$(am__dirstamp) \
+	test/$(DEPDIR)/$(am__dirstamp)
+
+pcm_reader_test$(EXEEXT): $(pcm_reader_test_OBJECTS) $(pcm_reader_test_DEPENDENCIES) $(EXTRA_pcm_reader_test_DEPENDENCIES) 
+	@rm -f pcm_reader_test$(EXEEXT)
+	$(AM_V_CXXLD)$(pcm_reader_test_LINK) $(pcm_reader_test_OBJECTS) $(pcm_reader_test_LDADD) $(LIBS)
 test/srfft_test-srfft_test.$(OBJEXT): test/$(am__dirstamp) \
 	test/$(DEPDIR)/$(am__dirstamp)
 
@@ -796,10 +817,12 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/fst.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/hashlist.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/main.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/pcm_reader.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/srfft.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/util.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/fst_test-fst_test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/hashlist_test-hashlist_test.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/pcm_reader_test-pcm_reader_test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/srfft_test-srfft_test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/vector_test-vector_test.Po@am__quote@
 
@@ -862,6 +885,20 @@ test/hashlist_test-hashlist_test.obj: test/hashlist_test.cc
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='test/hashlist_test.cc' object='test/hashlist_test-hashlist_test.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(hashlist_test_CXXFLAGS) $(CXXFLAGS) -c -o test/hashlist_test-hashlist_test.obj `if test -f 'test/hashlist_test.cc'; then $(CYGPATH_W) 'test/hashlist_test.cc'; else $(CYGPATH_W) '$(srcdir)/test/hashlist_test.cc'; fi`
+
+test/pcm_reader_test-pcm_reader_test.o: test/pcm_reader_test.cc
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pcm_reader_test_CXXFLAGS) $(CXXFLAGS) -MT test/pcm_reader_test-pcm_reader_test.o -MD -MP -MF test/$(DEPDIR)/pcm_reader_test-pcm_reader_test.Tpo -c -o test/pcm_reader_test-pcm_reader_test.o `test -f 'test/pcm_reader_test.cc' || echo '$(srcdir)/'`test/pcm_reader_test.cc
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) test/$(DEPDIR)/pcm_reader_test-pcm_reader_test.Tpo test/$(DEPDIR)/pcm_reader_test-pcm_reader_test.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='test/pcm_reader_test.cc' object='test/pcm_reader_test-pcm_reader_test.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pcm_reader_test_CXXFLAGS) $(CXXFLAGS) -c -o test/pcm_reader_test-pcm_reader_test.o `test -f 'test/pcm_reader_test.cc' || echo '$(srcdir)/'`test/pcm_reader_test.cc
+
+test/pcm_reader_test-pcm_reader_test.obj: test/pcm_reader_test.cc
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pcm_reader_test_CXXFLAGS) $(CXXFLAGS) -MT test/pcm_reader_test-pcm_reader_test.obj -MD -MP -MF test/$(DEPDIR)/pcm_reader_test-pcm_reader_test.Tpo -c -o test/pcm_reader_test-pcm_reader_test.obj `if test -f 'test/pcm_reader_test.cc'; then $(CYGPATH_W) 'test/pcm_reader_test.cc'; else $(CYGPATH_W) '$(srcdir)/test/pcm_reader_test.cc'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) test/$(DEPDIR)/pcm_reader_test-pcm_reader_test.Tpo test/$(DEPDIR)/pcm_reader_test-pcm_reader_test.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='test/pcm_reader_test.cc' object='test/pcm_reader_test-pcm_reader_test.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pcm_reader_test_CXXFLAGS) $(CXXFLAGS) -c -o test/pcm_reader_test-pcm_reader_test.obj `if test -f 'test/pcm_reader_test.cc'; then $(CYGPATH_W) 'test/pcm_reader_test.cc'; else $(CYGPATH_W) '$(srcdir)/test/pcm_reader_test.cc'; fi`
 
 test/srfft_test-srfft_test.o: test/srfft_test.cc
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(srfft_test_CXXFLAGS) $(CXXFLAGS) -MT test/srfft_test-srfft_test.o -MD -MP -MF test/$(DEPDIR)/srfft_test-srfft_test.Tpo -c -o test/srfft_test-srfft_test.o `test -f 'test/srfft_test.cc' || echo '$(srcdir)/'`test/srfft_test.cc
@@ -1115,6 +1152,13 @@ fst_test.log: fst_test$(EXEEXT)
 srfft_test.log: srfft_test$(EXEEXT)
 	@p='srfft_test$(EXEEXT)'; \
 	b='srfft_test'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
+pcm_reader_test.log: pcm_reader_test$(EXEEXT)
+	@p='pcm_reader_test$(EXEEXT)'; \
+	b='pcm_reader_test'; \
 	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
