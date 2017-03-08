@@ -25,9 +25,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "hashlist.h"
+#include "fst.h"
 #include "alloc.h"
-#include "util/stl-utils.h"
 #include "fst/fstlib.h"
+#include "util/stl-utils.h"
 #include "lat/kaldi-lattice.h"
 #include "itf/decodable-itf.h"
 
@@ -43,7 +44,25 @@ typedef struct {
 // Destroy the pk_decoder_result_t.
 void pk_decoder_result_destroy(pk_decoder_result_t *best_path);
 
+typedef struct pk_decoder_token_t {
+  struct pk_decoder_token_t *previous;
+  int input_label;
+  int output_label;
+  int next_state;
+  float arc_weight;
+  float cost;
+  int32_t ref_count;
+} pk_decoder_token_t;
 
+// Allocate and initialize a token for decoder, return the pointer to it
+pk_decoder_token_t *pk_decoder_token_new(
+    pk_alloc_t *alloc,
+    const fst::StdArc &arc,
+    double acoustic_cost,
+    pk_decoder_token_t *previous);
+
+// Delete the token when there is no reference to it
+void pk_decoder_token_delete(pk_alloc_t *alloc, pk_decoder_token_t *self);
 
 
 namespace kaldi {
@@ -106,46 +125,6 @@ class PkSimpleDecoder {
   int32 NumFramesDecoded() const { return num_frames_decoded_; }
 
  private:
-
-  class Token {
-   public:
-    LatticeArc arc_; // We use LatticeArc so that we can separately
-                     // store the acoustic and graph cost, in case
-                     // we need to produce lattice-formatted output.
-    Token *prev_;
-    int32 ref_count_;
-    double cost_; // accumulated total cost up to this point.
-    Token(const StdArc &arc,
-          BaseFloat acoustic_cost,
-          Token *prev): prev_(prev), ref_count_(1) {
-      arc_.ilabel = arc.ilabel;
-      arc_.olabel = arc.olabel;
-      arc_.weight = LatticeWeight(arc.weight.Value(), acoustic_cost);
-      arc_.nextstate = arc.nextstate;
-      if (prev) {
-        prev->ref_count_++;
-        cost_ = prev->cost_ + (arc.weight.Value() + acoustic_cost);
-      } else {
-        cost_ = arc.weight.Value() + acoustic_cost;
-      }
-    }
-    bool operator < (const Token &other) {
-      return cost_ > other.cost_;
-    }
-
-    static void TokenDelete(Token *tok) {
-      while (--tok->ref_count_ == 0) {
-        Token *prev = tok->prev_;
-        delete tok;
-        if (prev == NULL) return;
-        else tok = prev;
-      }
-#ifdef KALDI_PARANOID
-      KALDI_ASSERT(tok->ref_count_ > 0);
-#endif
-    }
-  };
-
   // ProcessEmitting decodes the frame num_frames_decoded_ of the
   // decodable object, then increments num_frames_decoded_.
   void ProcessEmitting(DecodableInterface *decodable);
@@ -158,11 +137,12 @@ class PkSimpleDecoder {
   pk_alloc_t alloc_;
 
   const fst::Fst<fst::StdArc> &fst_;
+  pk_fst_arc_t dummy_arc_;
   BaseFloat beam_;
   // Keep track of the number of frames decoded in the current file.
   int32 num_frames_decoded_;
   
-  static void ClearToks(pk_hashlist_t *tok);
+  void ClearToks(pk_hashlist_t *tok);
 
   void PruneToks(BaseFloat beam, pk_hashlist_t *toks);
   
