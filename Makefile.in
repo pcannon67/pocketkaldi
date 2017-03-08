@@ -144,8 +144,9 @@ libpocketkaldi_a_AR = $(AR) $(ARFLAGS)
 libpocketkaldi_a_LIBADD =
 am__dirstamp = $(am__leading_dot)dirstamp
 am_libpocketkaldi_a_OBJECTS = src/hashlist.$(OBJEXT) \
-	src/util.$(OBJEXT) src/fst.$(OBJEXT) src/pcm_reader.$(OBJEXT) \
-	src/decoder.$(OBJEXT) src/srfft.$(OBJEXT)
+	src/util.$(OBJEXT) src/fst.$(OBJEXT) src/matrix.$(OBJEXT) \
+	src/pcm_reader.$(OBJEXT) src/decoder.$(OBJEXT) \
+	src/srfft.$(OBJEXT)
 libpocketkaldi_a_OBJECTS = $(am_libpocketkaldi_a_OBJECTS)
 PROGRAMS = $(bin_PROGRAMS)
 am_fst_test_OBJECTS = test/fst_test-fst_test.$(OBJEXT)
@@ -570,6 +571,7 @@ lib_LIBRARIES = libpocketkaldi.a
 libpocketkaldi_a_SOURCES = src/hashlist.c \
                            src/util.c \
                            src/fst.c \
+                           src/matrix.c \
                            src/pcm_reader.c \
                            src/decoder.cc \
                            src/srfft.c
@@ -702,6 +704,8 @@ src/hashlist.$(OBJEXT): src/$(am__dirstamp) \
 	src/$(DEPDIR)/$(am__dirstamp)
 src/util.$(OBJEXT): src/$(am__dirstamp) src/$(DEPDIR)/$(am__dirstamp)
 src/fst.$(OBJEXT): src/$(am__dirstamp) src/$(DEPDIR)/$(am__dirstamp)
+src/matrix.$(OBJEXT): src/$(am__dirstamp) \
+	src/$(DEPDIR)/$(am__dirstamp)
 src/pcm_reader.$(OBJEXT): src/$(am__dirstamp) \
 	src/$(DEPDIR)/$(am__dirstamp)
 src/decoder.$(OBJEXT): src/$(am__dirstamp) \
@@ -811,6 +815,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/fst.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/hashlist.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/main.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/matrix.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/pcm_reader.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/srfft.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/util.Po@am__quote@

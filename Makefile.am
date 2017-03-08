@@ -10,6 +10,7 @@ lib_LIBRARIES = libpocketkaldi.a
 libpocketkaldi_a_SOURCES = src/hashlist.c \
                            src/util.c \
                            src/fst.c \
+                           src/matrix.c \
                            src/pcm_reader.c \
                            src/decoder.cc \
                            src/srfft.c
