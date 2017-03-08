@@ -5,16 +5,16 @@ if [[ -z $KALDI_ROOT ]]; then
   exit 1
 fi
 
-test_wav=en-us-hello.wav
-fbank_text=/tmp/fbank_${test_wav}.txt
-fbank_matrix=fbankmat_${test_wav}.txt
+test_wav_hello=en-us-hello.wav
+fbank_text=/tmp/fbank_${test_wav_hello}.txt
+fbank_matrix=fbankmat_${test_wav_hello}.txt
 input_scp=/tmp/fbank-test.scp
 config_file=/tmp/fbank-test.conf
 output_ark=/tmp/fbank-test.ark
 
 LF=$'\n'
 
-echo "test-wav-1 ${test_wav}${LF}" > $input_scp
+echo "test-wav-1 ${test_wav_hello}${LF}" > $input_scp
 
 cat > $config_file << EOF
 --num-mel-bins=40

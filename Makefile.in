@@ -87,11 +87,13 @@ POST_INSTALL = :
 NORMAL_UNINSTALL = :
 PRE_UNINSTALL = :
 POST_UNINSTALL = :
-bin_PROGRAMS = main$(EXEEXT)
+bin_PROGRAMS = main$(EXEEXT) $(am__EXEEXT_1)
+@ENABLE_TOOLS_TRUE@am__append_1 = compute_fbank
 TESTS = hashlist_test$(EXEEXT) list_test$(EXEEXT) fst_test$(EXEEXT) \
-	srfft_test$(EXEEXT) fbank_test$(EXEEXT)
+	srfft_test$(EXEEXT) fbank_test$(EXEEXT) $(am__append_2)
 check_PROGRAMS = hashlist_test$(EXEEXT) list_test$(EXEEXT) \
 	fst_test$(EXEEXT) srfft_test$(EXEEXT) fbank_test$(EXEEXT)
+@ENABLE_TOOLS_TRUE@am__append_2 = test/test_compute_fbank.sh
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/configure.ac
@@ -148,7 +150,20 @@ am_libpocketkaldi_a_OBJECTS = src/hashlist.$(OBJEXT) \
 	src/pcm_reader.$(OBJEXT) src/decoder.$(OBJEXT) \
 	src/srfft.$(OBJEXT) src/fbank.$(OBJEXT)
 libpocketkaldi_a_OBJECTS = $(am_libpocketkaldi_a_OBJECTS)
+@ENABLE_TOOLS_TRUE@am__EXEEXT_1 = compute_fbank$(EXEEXT)
 PROGRAMS = $(bin_PROGRAMS)
+am__compute_fbank_SOURCES_DIST = tool/compute_fbank.cc
+@ENABLE_TOOLS_TRUE@am_compute_fbank_OBJECTS =  \
+@ENABLE_TOOLS_TRUE@	tool/compute_fbank.$(OBJEXT)
+compute_fbank_OBJECTS = $(am_compute_fbank_OBJECTS)
+am__DEPENDENCIES_1 =
+@ENABLE_TOOLS_TRUE@compute_fbank_DEPENDENCIES =  \
+@ENABLE_TOOLS_TRUE@	$(KALDI_ROOT)/src/util/kaldi-util.a \
+@ENABLE_TOOLS_TRUE@	$(KALDI_ROOT)/src/thread/kaldi-thread.a \
+@ENABLE_TOOLS_TRUE@	$(KALDI_ROOT)/src/feat/kaldi-feat.a \
+@ENABLE_TOOLS_TRUE@	$(KALDI_ROOT)/src/matrix/kaldi-matrix.a \
+@ENABLE_TOOLS_TRUE@	$(KALDI_ROOT)/src/base/kaldi-base.a \
+@ENABLE_TOOLS_TRUE@	$(am__DEPENDENCIES_1) libpocketkaldi.a
 am_fbank_test_OBJECTS = test/fbank_test-fbank_test.$(OBJEXT)
 fbank_test_OBJECTS = $(am_fbank_test_OBJECTS)
 fbank_test_DEPENDENCIES = libpocketkaldi.a
@@ -171,21 +186,19 @@ list_test_LINK = $(CXXLD) $(list_test_CXXFLAGS) $(CXXFLAGS) \
 	$(AM_LDFLAGS) $(LDFLAGS) -o $@
 am_main_OBJECTS = src/main.$(OBJEXT)
 main_OBJECTS = $(am_main_OBJECTS)
-main_DEPENDENCIES = ../../kaldi/src/decoder/kaldi-decoder.a \
-	../../kaldi/src/lat/kaldi-lat.a \
-	../../kaldi/src/fstext/kaldi-fstext.a \
-	../../kaldi/src/hmm/kaldi-hmm.a \
-	../../kaldi/src/feat/kaldi-feat.a \
-	../../kaldi/src/transform/kaldi-transform.a \
-	../../kaldi/src/gmm/kaldi-gmm.a \
-	../../kaldi/src/tree/kaldi-tree.a \
-	../../kaldi/src/util/kaldi-util.a \
-	../../kaldi/src/thread/kaldi-thread.a \
-	../../kaldi/src/matrix/kaldi-matrix.a \
-	../../kaldi/src/base/kaldi-base.a /usr/lib/libatlas.so.3 \
-	/usr/lib/libf77blas.so.3 /usr/lib/libcblas.so.3 \
-	/usr/lib/liblapack_atlas.so.3 \
-	../../kaldi/tools/openfst/lib/libfst.a libpocketkaldi.a
+main_DEPENDENCIES = $(KALDI_ROOT)/src/decoder/kaldi-decoder.a \
+	$(KALDI_ROOT)/src/lat/kaldi-lat.a \
+	$(KALDI_ROOT)/src/fstext/kaldi-fstext.a \
+	$(KALDI_ROOT)/src/hmm/kaldi-hmm.a \
+	$(KALDI_ROOT)/src/feat/kaldi-feat.a \
+	$(KALDI_ROOT)/src/transform/kaldi-transform.a \
+	$(KALDI_ROOT)/src/gmm/kaldi-gmm.a \
+	$(KALDI_ROOT)/src/tree/kaldi-tree.a \
+	$(KALDI_ROOT)/src/util/kaldi-util.a \
+	$(KALDI_ROOT)/src/thread/kaldi-thread.a \
+	$(KALDI_ROOT)/src/matrix/kaldi-matrix.a \
+	$(KALDI_ROOT)/src/base/kaldi-base.a $(am__DEPENDENCIES_1) \
+	$(KALDI_ROOT)/tools/openfst/lib/libfst.a libpocketkaldi.a
 am_srfft_test_OBJECTS = test/srfft_test-srfft_test.$(OBJEXT)
 srfft_test_OBJECTS = $(am_srfft_test_OBJECTS)
 srfft_test_DEPENDENCIES = libpocketkaldi.a
@@ -236,10 +249,12 @@ AM_V_CXXLD = $(am__v_CXXLD_@AM_V@)
 am__v_CXXLD_ = $(am__v_CXXLD_@AM_DEFAULT_V@)
 am__v_CXXLD_0 = @echo "  CXXLD   " $@;
 am__v_CXXLD_1 = 
-SOURCES = $(libpocketkaldi_a_SOURCES) $(fbank_test_SOURCES) \
-	$(fst_test_SOURCES) $(hashlist_test_SOURCES) \
-	$(list_test_SOURCES) $(main_SOURCES) $(srfft_test_SOURCES)
-DIST_SOURCES = $(libpocketkaldi_a_SOURCES) $(fbank_test_SOURCES) \
+SOURCES = $(libpocketkaldi_a_SOURCES) $(compute_fbank_SOURCES) \
+	$(fbank_test_SOURCES) $(fst_test_SOURCES) \
+	$(hashlist_test_SOURCES) $(list_test_SOURCES) $(main_SOURCES) \
+	$(srfft_test_SOURCES)
+DIST_SOURCES = $(libpocketkaldi_a_SOURCES) \
+	$(am__compute_fbank_SOURCES_DIST) $(fbank_test_SOURCES) \
 	$(fst_test_SOURCES) $(hashlist_test_SOURCES) \
 	$(list_test_SOURCES) $(main_SOURCES) $(srfft_test_SOURCES)
 am__can_run_installinfo = \
@@ -470,6 +485,7 @@ distcleancheck_listfiles = find . -type f -print
 ACLOCAL = @ACLOCAL@
 AMTAR = @AMTAR@
 AM_DEFAULT_VERBOSITY = @AM_DEFAULT_VERBOSITY@
+ATLASLIBS = @ATLASLIBS@
 AUTOCONF = @AUTOCONF@
 AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
@@ -477,7 +493,6 @@ AWK = @AWK@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
-CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
 CXX = @CXX@
 CXXDEPMODE = @CXXDEPMODE@
@@ -488,16 +503,14 @@ DEPDIR = @DEPDIR@
 ECHO_C = @ECHO_C@
 ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
-EGREP = @EGREP@
 EXEEXT = @EXEEXT@
-GREP = @GREP@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
+KALDI_ROOT = @KALDI_ROOT@
 LDFLAGS = @LDFLAGS@
-LIBICONV = @LIBICONV@
 LIBOBJS = @LIBOBJS@
 LIBS = @LIBS@
 LTLIBOBJS = @LTLIBOBJS@
@@ -576,25 +589,31 @@ libpocketkaldi_a_SOURCES = src/hashlist.c \
                            src/srfft.c \
                            src/fbank.c
 
-main_LDADD = ../../kaldi/src/decoder/kaldi-decoder.a \
-              ../../kaldi/src/lat/kaldi-lat.a \
-              ../../kaldi/src/fstext/kaldi-fstext.a \
-              ../../kaldi/src/hmm/kaldi-hmm.a \
-              ../../kaldi/src/feat/kaldi-feat.a \
-              ../../kaldi/src/transform/kaldi-transform.a \
-              ../../kaldi/src/gmm/kaldi-gmm.a \
-              ../../kaldi/src/tree/kaldi-tree.a \
-              ../../kaldi/src/util/kaldi-util.a \
-              ../../kaldi/src/thread/kaldi-thread.a \
-              ../../kaldi/src/matrix/kaldi-matrix.a \
-              ../../kaldi/src/base/kaldi-base.a \
-              /usr/lib/libatlas.so.3 \
-              /usr/lib/libf77blas.so.3 \
-              /usr/lib/libcblas.so.3 \
-              /usr/lib/liblapack_atlas.so.3 \
-              ../../kaldi/tools/openfst/lib/libfst.a \
+main_LDADD = $(KALDI_ROOT)/src/decoder/kaldi-decoder.a \
+              $(KALDI_ROOT)/src/lat/kaldi-lat.a \
+              $(KALDI_ROOT)/src/fstext/kaldi-fstext.a \
+              $(KALDI_ROOT)/src/hmm/kaldi-hmm.a \
+              $(KALDI_ROOT)/src/feat/kaldi-feat.a \
+              $(KALDI_ROOT)/src/transform/kaldi-transform.a \
+              $(KALDI_ROOT)/src/gmm/kaldi-gmm.a \
+              $(KALDI_ROOT)/src/tree/kaldi-tree.a \
+              $(KALDI_ROOT)/src/util/kaldi-util.a \
+              $(KALDI_ROOT)/src/thread/kaldi-thread.a \
+              $(KALDI_ROOT)/src/matrix/kaldi-matrix.a \
+              $(KALDI_ROOT)/src/base/kaldi-base.a \
+              $(ATLASLIBS) \
+              $(KALDI_ROOT)/tools/openfst/lib/libfst.a \
               libpocketkaldi.a \
               -ldl
+
+@ENABLE_TOOLS_TRUE@compute_fbank_SOURCES = tool/compute_fbank.cc
+@ENABLE_TOOLS_TRUE@compute_fbank_LDADD = $(KALDI_ROOT)/src/util/kaldi-util.a \
+@ENABLE_TOOLS_TRUE@                          $(KALDI_ROOT)/src/thread/kaldi-thread.a \
+@ENABLE_TOOLS_TRUE@                          $(KALDI_ROOT)/src/feat/kaldi-feat.a \
+@ENABLE_TOOLS_TRUE@                          $(KALDI_ROOT)/src/matrix/kaldi-matrix.a \
+@ENABLE_TOOLS_TRUE@                          $(KALDI_ROOT)/src/base/kaldi-base.a \
+@ENABLE_TOOLS_TRUE@                          $(ATLASLIBS) \
+@ENABLE_TOOLS_TRUE@                          libpocketkaldi.a
 
 hashlist_test_SOURCES = test/hashlist_test.cc
 hashlist_test_CXXFLAGS = $(AM_CXXFLAGS) -std=c++11 -I$(top_srcdir)/src
@@ -611,6 +630,7 @@ srfft_test_LDADD = libpocketkaldi.a
 fbank_test_SOURCES = test/fbank_test.cc
 fbank_test_CXXFLAGS = $(AM_CXXFLAGS) -std=c++11 -I$(top_srcdir)/src -DTESTDIR=\"$(top_srcdir)/test/\"
 fbank_test_LDADD = libpocketkaldi.a
+@ENABLE_TOOLS_TRUE@TESTS_ENVIRONMENT = export testdir=$(top_srcdir)/test && export kaldiroot=$(KALDI_ROOT) &&
 all: all-am
 
 .SUFFIXES:
@@ -762,6 +782,18 @@ clean-binPROGRAMS:
 
 clean-checkPROGRAMS:
 	-test -z "$(check_PROGRAMS)" || rm -f $(check_PROGRAMS)
+tool/$(am__dirstamp):
+	@$(MKDIR_P) tool
+	@: > tool/$(am__dirstamp)
+tool/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) tool/$(DEPDIR)
+	@: > tool/$(DEPDIR)/$(am__dirstamp)
+tool/compute_fbank.$(OBJEXT): tool/$(am__dirstamp) \
+	tool/$(DEPDIR)/$(am__dirstamp)
+
+compute_fbank$(EXEEXT): $(compute_fbank_OBJECTS) $(compute_fbank_DEPENDENCIES) $(EXTRA_compute_fbank_DEPENDENCIES) 
+	@rm -f compute_fbank$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(compute_fbank_OBJECTS) $(compute_fbank_LDADD) $(LIBS)
 test/$(am__dirstamp):
 	@$(MKDIR_P) test
 	@: > test/$(am__dirstamp)
@@ -808,6 +840,7 @@ mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
 	-rm -f src/*.$(OBJEXT)
 	-rm -f test/*.$(OBJEXT)
+	-rm -f tool/*.$(OBJEXT)
 
 distclean-compile:
 	-rm -f *.tab.c
@@ -826,6 +859,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/hashlist_test-hashlist_test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/list_test-list_test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/srfft_test-srfft_test.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@tool/$(DEPDIR)/compute_fbank.Po@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(AM_V_CC)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.o$$||'`;\
@@ -1164,6 +1198,13 @@ fbank_test.log: fbank_test$(EXEEXT)
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
 	"$$tst" $(AM_TESTS_FD_REDIRECT)
+test/test_compute_fbank.sh.log: test/test_compute_fbank.sh
+	@p='test/test_compute_fbank.sh'; \
+	b='test/test_compute_fbank.sh'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
 .test.log:
 	@p='$<'; \
 	$(am__set_b); \
@@ -1384,6 +1425,8 @@ distclean-generic:
 	-rm -f src/$(am__dirstamp)
 	-rm -f test/$(DEPDIR)/$(am__dirstamp)
 	-rm -f test/$(am__dirstamp)
+	-rm -f tool/$(DEPDIR)/$(am__dirstamp)
+	-rm -f tool/$(am__dirstamp)
 
 maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
@@ -1395,7 +1438,7 @@ clean-am: clean-binPROGRAMS clean-checkPROGRAMS clean-generic \
 
 distclean: distclean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
-	-rm -rf src/$(DEPDIR) test/$(DEPDIR)
+	-rm -rf src/$(DEPDIR) test/$(DEPDIR) tool/$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-hdr distclean-tags
@@ -1443,7 +1486,7 @@ installcheck-am:
 maintainer-clean: maintainer-clean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
 	-rm -rf $(top_srcdir)/autom4te.cache
-	-rm -rf src/$(DEPDIR) test/$(DEPDIR)
+	-rm -rf src/$(DEPDIR) test/$(DEPDIR) tool/$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 

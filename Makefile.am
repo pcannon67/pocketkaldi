@@ -16,25 +16,34 @@ libpocketkaldi_a_SOURCES = src/hashlist.c \
                            src/srfft.c \
                            src/fbank.c
 
-main_LDADD = ../../kaldi/src/decoder/kaldi-decoder.a \
-              ../../kaldi/src/lat/kaldi-lat.a \
-              ../../kaldi/src/fstext/kaldi-fstext.a \
-              ../../kaldi/src/hmm/kaldi-hmm.a \
-              ../../kaldi/src/feat/kaldi-feat.a \
-              ../../kaldi/src/transform/kaldi-transform.a \
-              ../../kaldi/src/gmm/kaldi-gmm.a \
-              ../../kaldi/src/tree/kaldi-tree.a \
-              ../../kaldi/src/util/kaldi-util.a \
-              ../../kaldi/src/thread/kaldi-thread.a \
-              ../../kaldi/src/matrix/kaldi-matrix.a \
-              ../../kaldi/src/base/kaldi-base.a \
-              /usr/lib/libatlas.so.3 \
-              /usr/lib/libf77blas.so.3 \
-              /usr/lib/libcblas.so.3 \
-              /usr/lib/liblapack_atlas.so.3 \
-              ../../kaldi/tools/openfst/lib/libfst.a \
+main_LDADD = $(KALDI_ROOT)/src/decoder/kaldi-decoder.a \
+              $(KALDI_ROOT)/src/lat/kaldi-lat.a \
+              $(KALDI_ROOT)/src/fstext/kaldi-fstext.a \
+              $(KALDI_ROOT)/src/hmm/kaldi-hmm.a \
+              $(KALDI_ROOT)/src/feat/kaldi-feat.a \
+              $(KALDI_ROOT)/src/transform/kaldi-transform.a \
+              $(KALDI_ROOT)/src/gmm/kaldi-gmm.a \
+              $(KALDI_ROOT)/src/tree/kaldi-tree.a \
+              $(KALDI_ROOT)/src/util/kaldi-util.a \
+              $(KALDI_ROOT)/src/thread/kaldi-thread.a \
+              $(KALDI_ROOT)/src/matrix/kaldi-matrix.a \
+              $(KALDI_ROOT)/src/base/kaldi-base.a \
+              $(ATLASLIBS) \
+              $(KALDI_ROOT)/tools/openfst/lib/libfst.a \
               libpocketkaldi.a \
               -ldl
+
+if ENABLE_TOOLS
+    bin_PROGRAMS += compute_fbank
+    compute_fbank_SOURCES = tool/compute_fbank.cc
+    compute_fbank_LDADD = $(KALDI_ROOT)/src/util/kaldi-util.a \
+                          $(KALDI_ROOT)/src/thread/kaldi-thread.a \
+                          $(KALDI_ROOT)/src/feat/kaldi-feat.a \
+                          $(KALDI_ROOT)/src/matrix/kaldi-matrix.a \
+                          $(KALDI_ROOT)/src/base/kaldi-base.a \
+                          $(ATLASLIBS) \
+                          libpocketkaldi.a
+endif
 
 TESTS = hashlist_test list_test fst_test srfft_test fbank_test
 check_PROGRAMS = hashlist_test list_test fst_test srfft_test fbank_test
@@ -58,3 +67,8 @@ srfft_test_LDADD = libpocketkaldi.a
 fbank_test_SOURCES = test/fbank_test.cc
 fbank_test_CXXFLAGS = $(AM_CXXFLAGS) -std=c++11 -I$(top_srcdir)/src -DTESTDIR=\"$(top_srcdir)/test/\"
 fbank_test_LDADD = libpocketkaldi.a
+
+if ENABLE_TOOLS
+    TESTS_ENVIRONMENT = export testdir=$(top_srcdir)/test && export kaldiroot=$(KALDI_ROOT) &&
+    TESTS += test/test_compute_fbank.sh
+endif
