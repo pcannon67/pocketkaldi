@@ -37,14 +37,16 @@ PkSimpleDecoder::PkSimpleDecoder(
 }
 
 PkSimpleDecoder::~PkSimpleDecoder() {
+  puts("~PkSimpleDecoder");
   ClearToks(&cur_toks_);
   ClearToks(&prev_toks_);
-  ClearToks(&tmp_toks_);
+  pk_hashlist_destroy(&cur_toks_);
+  pk_hashlist_destroy(&prev_toks_);
+  pk_hashlist_destroy(&tmp_toks_);
 }
 
 
 bool PkSimpleDecoder::Decode(DecodableInterface *decodable) {
-  puts("PkSimpleDecoder::Decode");
   InitDecoding();
   while( !decodable->IsLastFrame(num_frames_decoded_ - 1)) {
     ClearToks(&prev_toks_);
@@ -208,6 +210,7 @@ void PkSimpleDecoder::ProcessEmitting(DecodableInterface *decodable) {
   while (elem) {
     StateId state = (StateId)elem->key;
     Token *tok = (Token *)elem->value;
+    if (state != tok->arc_.nextstate) printf("%d, %d\n", state, tok->arc_.nextstate);
     KALDI_ASSERT(state == tok->arc_.nextstate);
     for (fst::ArcIterator<fst::Fst<StdArc> > aiter(fst_, state);
          !aiter.Done();

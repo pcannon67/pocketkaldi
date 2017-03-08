@@ -24,6 +24,7 @@ struct pk_hashlist_t {
   int bucket_size;
   int size;
   pk_hashlist_elem_t *head;
+  pk_hashlist_elem_t *tail;  // Points to the last element of list
   pk_hashlist_elem_t *empty_head;
   pk_alloc_t *alloc;
 };

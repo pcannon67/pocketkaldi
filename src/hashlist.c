@@ -57,6 +57,7 @@ void pk_hashlist_init(pk_hashlist_t *hashlist, pk_alloc_t *alloc) {
   hashlist->bucket_size = PK_HASHLIST_INITIALSIZE;
   hashlist->size = 0;
   hashlist->head = NULL;
+  hashlist->tail = NULL;
   hashlist->empty_head = NULL;
 }
 
@@ -83,6 +84,7 @@ void pk_hashlist_destroy(pk_hashlist_t *hashlist) {
   }
 
   hashlist->head = NULL;
+  hashlist->tail = NULL;
   hashlist->empty_head = NULL;
 }
 
@@ -129,6 +131,9 @@ void pk_hashlist_insert(
     elem->next = hashlist->head;
     elem->next_bucket_elem = NULL;  // It will be changed soon
     hashlist->head = elem;
+    if (hashlist->tail == NULL) {
+      hashlist->tail = elem;
+    }
 
     // Insert into buckets
     insert_to_bucket(hashlist, elem);
@@ -156,8 +161,15 @@ void pk_hashlist_clear(pk_hashlist_t *hashlist) {
     hashlist->buckets[i] = NULL;
   }
   hashlist->size = 0;
+
+  if (hashlist->tail) {
+    // Concat two linklists: head and empty_head
+    assert(hashlist->tail->next == NULL);
+    hashlist->tail->next = hashlist->empty_head;
+  }
   hashlist->empty_head = hashlist->head;
   hashlist->head = NULL;
+  hashlist->tail = NULL;
 }
 
 void pk_hashlist_swap(pk_hashlist_t *hashlist1, pk_hashlist_t *hashlist2) {
@@ -181,4 +193,8 @@ void pk_hashlist_swap(pk_hashlist_t *hashlist1, pk_hashlist_t *hashlist2) {
   head = hashlist1->empty_head;
   hashlist1->empty_head = hashlist2->empty_head;
   hashlist2->empty_head = head;
+
+  pk_hashlist_elem_t *tail = hashlist1->tail;
+  hashlist1->tail = hashlist2->tail;
+  hashlist2->tail = tail;
 }
