@@ -22,12 +22,25 @@
 #ifndef KALDI_DECODER_SIMPLE_DECODER_H_
 #define KALDI_DECODER_SIMPLE_DECODER_H_
 
+#include <stdbool.h>
+#include <stdint.h>
 #include "hashlist.h"
 #include "alloc.h"
 #include "util/stl-utils.h"
 #include "fst/fstlib.h"
 #include "lat/kaldi-lattice.h"
 #include "itf/decodable-itf.h"
+
+typedef struct {
+  int32_t *alignment;
+  int32_t alignment_size;
+  int32_t *words;
+  int32_t size;
+  float weight;
+  pk_alloc_t *alloc;
+} pk_decoder_result_t;
+
+void pk_decoder_result_destroy(pk_decoder_result_t *best_path);
 
 namespace kaldi {
 
@@ -61,7 +74,7 @@ class PkSimpleDecoder {
   // If Decode() returned true, it is safe to assume GetBestPath will return true.
   // It returns true if the output lattice was nonempty (i.e. had states in it);
   // using the return value is deprecated.
-  bool GetBestPath(Lattice *fst_out, bool use_final_probs = true) const;
+  bool GetBestPath(pk_decoder_result_t *best_path, bool use_final_probs = true) ;
   
   /// *** The next functions are from the "new interface". ***
   

@@ -25,6 +25,19 @@
 #include <algorithm>
 #include <stdio.h>
 
+void pk_decoder_result_destroy(pk_decoder_result_t *best_path) {
+  best_path->alignment_size = 0;
+  pk_free(best_path->alloc, best_path->alignment);
+  best_path->alignment = NULL;
+
+  best_path->size = 0;
+  pk_free(best_path->alloc, best_path->words);
+  best_path->words = NULL;
+
+  best_path->weight = 0;
+  best_path->alloc = NULL;
+}
+
 namespace kaldi {
 
 PkSimpleDecoder::PkSimpleDecoder(
@@ -145,8 +158,9 @@ BaseFloat PkSimpleDecoder::FinalRelativeCost() const {
 
 // Outputs an FST corresponding to the single best path
 // through the lattice.
-bool PkSimpleDecoder::GetBestPath(Lattice *fst_out, bool use_final_probs) const {
-  fst_out->DeleteStates();
+bool PkSimpleDecoder::GetBestPath(
+    pk_decoder_result_t *best_path,
+    bool use_final_probs)  {
   Token *best_tok = NULL;
   bool is_final = ReachedFinal();
   if (!is_final) {
@@ -182,21 +196,34 @@ bool PkSimpleDecoder::GetBestPath(Lattice *fst_out, bool use_final_probs) const 
   KALDI_ASSERT(arcs_reverse.back().nextstate == fst_.Start());
   arcs_reverse.pop_back();  // that was a "fake" token... gives no info.
 
-  StateId cur_state = fst_out->AddState();
-  fst_out->SetStart(cur_state);
+  std::vector<int32_t> alignment;
+  std::vector<int32_t> words;
+  float weight = 0;
   for (ssize_t i = static_cast<ssize_t>(arcs_reverse.size())-1; i >= 0; i--) {
     LatticeArc arc = arcs_reverse[i];
-    arc.nextstate = fst_out->AddState();
-    fst_out->AddArc(cur_state, arc);
-    cur_state = arc.nextstate;
+    if (arc.ilabel != 0) alignment.push_back(arc.ilabel);
+    if (arc.olabel != 0) words.push_back(arc.olabel);
+
+    weight += ConvertToCost(arc.weight);
   }
-  if (is_final && use_final_probs)
-    fst_out->SetFinal(cur_state,
-                      LatticeWeight(fst_.Final(best_tok->arc_.nextstate).Value(),
-                                    0.0));
-  else
-    fst_out->SetFinal(cur_state, LatticeWeight::One());
-  fst::RemoveEpsLocal(fst_out);
+
+  best_path->alignment = (int32_t *)pk_alloc(&alloc_, alignment.size() * sizeof(int32_t));
+  for (int idx = 0; idx < alignment.size(); ++idx) {
+    best_path->alignment[idx] = alignment[idx];
+  }
+  best_path->alignment_size = (int32_t)alignment.size();
+  best_path->words = (int32_t *)pk_alloc(&alloc_, words.size() * sizeof(int32_t));
+  for (int idx = 0; idx < words.size(); ++idx) {
+    best_path->words[idx] = words[idx];
+  }
+  best_path->size = (int32_t)words.size();
+  best_path->weight = weight;
+  best_path->alloc = &alloc_;
+
+  if (is_final && use_final_probs) {
+    best_path->weight += fst_.Final(best_tok->arc_.nextstate).Value();
+  }
+
   return true;
 }
 

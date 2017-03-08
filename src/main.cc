@@ -123,33 +123,28 @@ int main(int argc, char *argv[]) {
       decoder.Decode(&gmm_decodable);
 
       VectorFst<LatticeArc> decoded;  // linear FST.
+      pk_decoder_result_t best_path;
 
       if ( (allow_partial || decoder.ReachedFinal())
-           && decoder.GetBestPath(&decoded) ) {
+           && decoder.GetBestPath(&best_path) ) {
         if (!decoder.ReachedFinal())
           KALDI_WARN << "Decoder did not reach end-state, "
                      << "outputting partial traceback since --allow-partial=true";
         num_success++;
 
-        std::vector<int32> alignment;
-        std::vector<int32> words;
-        LatticeWeight weight;
+        std::vector<int32> alignment(
+            best_path.alignment,
+            best_path.alignment + best_path.alignment_size);
+        std::vector<int32> words(
+            best_path.words,
+            best_path.words + best_path.size);
+        float weight = best_path.weight;
+        pk_decoder_result_destroy(&best_path);
+
         frame_count += features.NumRows();
-
-        GetLinearSymbolSequence(decoded, &alignment, &words, &weight);
-
         words_writer.Write(utt, words);
         if (alignment_wspecifier != "")
           alignment_writer.Write(utt, alignment);
-        if (lattice_wspecifier != "") {
-          // We'll write the lattice without acoustic scaling.
-          if (acoustic_scale != 0.0)
-            fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale),
-                              &decoded);
-          fst::VectorFst<CompactLatticeArc> clat;
-          ConvertLattice(decoded, &clat, true);
-          clat_writer.Write(utt, clat);
-        }
         if (word_syms != NULL) {
           std::cerr << utt << ' ';
           for (size_t i = 0; i < words.size(); i++) {
@@ -160,7 +155,7 @@ int main(int argc, char *argv[]) {
           }
           std::cerr << '\n';
         }
-        BaseFloat like = -ConvertToCost(weight);
+        BaseFloat like = -weight;
         tot_like += like;
         KALDI_LOG << "Log-like per frame for utterance " << utt << " is "
                   << (like / features.NumRows()) << " over "
