@@ -1,7 +1,7 @@
 // Created at 2016-11-22
 
-#ifndef POCKETKALDI_VECTOR_H_
-#define POCKETKALDI_VECTOR_H_
+#ifndef POCKETKALDI_LIST_H_
+#define POCKETKALDI_LIST_H_
 
 #include <assert.h>
 #include <stdlib.h>
@@ -10,9 +10,9 @@
 #include <stdbool.h>
 #include "alloc.h"
 
-#define PKVECTOR_INITIALSIZE 16;
+#define PKLIST_INITIALSIZE 16;
 
-#define PKVECTOR_DEFINE(T, name)                                               \
+#define PKLIST_DEFINE(T, name)                                                 \
     typedef struct name##_t {                                                  \
       int size;                                                                \
       T *data;                                                                 \
@@ -24,7 +24,7 @@
         name##_t *self,                                                        \
         pk_alloc_t *alloc) {                                                   \
       self->_alloc = alloc;                                                    \
-      self->_capability = PKVECTOR_INITIALSIZE;                                \
+      self->_capability = PKLIST_INITIALSIZE;                                  \
       self->size = 0;                                                          \
       self->data = (T *)pk_alloc(self->_alloc, self->_capability * sizeof(T)); \
     }                                                                          \
@@ -55,12 +55,12 @@
     }                                                                          \
                                                                                \
     static inline T name##_back(name##_t *self) {                              \
-      assert(self->size > 0 && "vector is empty when calling _back()");        \
+      assert(self->size > 0 && "list is empty when calling _back()");          \
       return self->data[self->size - 1];                                       \
     }                                                                          \
                                                                                \
     static inline void name##_pop_back(name##_t *self) {                       \
-      assert(self->size > 0 && "vector is empty when calling pop_back()");     \
+      assert(self->size > 0 && "list is empty when calling pop_back()");       \
       --self->size;                                                            \
     }                                                                          \
                                                                                \
@@ -68,4 +68,4 @@
       return self->size == 0;                                                  \
     }                                                                          
 
-#endif  // POCKETKALDI_VECTOR_H_
+#endif  // POCKETKALDI_LIST_H_

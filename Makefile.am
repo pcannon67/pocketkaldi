@@ -35,16 +35,16 @@ main_LDADD = ../../kaldi/src/decoder/kaldi-decoder.a \
               libpocketkaldi.a \
               -ldl
 
-TESTS = hashlist_test vector_test fst_test srfft_test pcm_reader_test
-check_PROGRAMS = hashlist_test vector_test fst_test srfft_test pcm_reader_test
+TESTS = hashlist_test list_test fst_test srfft_test pcm_reader_test
+check_PROGRAMS = hashlist_test list_test fst_test srfft_test pcm_reader_test
 
 hashlist_test_SOURCES = test/hashlist_test.cc
 hashlist_test_CXXFLAGS = $(AM_CXXFLAGS) -std=c++11 -I$(top_srcdir)/src
 hashlist_test_LDADD = libpocketkaldi.a
 
-vector_test_SOURCES = test/vector_test.cc
-vector_test_CXXFLAGS = $(AM_CXXFLAGS) -std=c++11 -I$(top_srcdir)/src
-vector_test_LDADD = libpocketkaldi.a
+list_test_SOURCES = test/list_test.cc
+list_test_CXXFLAGS = $(AM_CXXFLAGS) -std=c++11 -I$(top_srcdir)/src
+list_test_LDADD = libpocketkaldi.a
 
 fst_test_SOURCES = test/fst_test.cc
 fst_test_CXXFLAGS = $(AM_CXXFLAGS) -std=c++11 -I$(top_srcdir)/src -DTESTDIR=\"$(top_srcdir)/test/\"
