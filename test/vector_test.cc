@@ -7,28 +7,40 @@
 #include "alloc.h"
 #include "vector.h"
 
-PKVECTOR_DEFINE(int)
+PKVECTOR_DEFINE(int, int_vector)
 
 void TestIntVector() {
-  pk_vector_int_t pkvector_int;
+  int_vector_t pkvector_int;
   pk_alloc_t alloc;
 
   pk_alloc_init(&alloc);
-  pk_vector_int_init(&pkvector_int, &alloc);
+  int_vector_init(&pkvector_int, &alloc);
+
+  assert(int_vector_empty(&pkvector_int));
 
   std::vector<int> stdvector_int;
   int N = 1000000;
   for (int i = 0; i < N; ++i) {
     int random_num = rand();
     stdvector_int.push_back(random_num);
-    pk_vector_int_push_back(&pkvector_int, random_num);
+    int_vector_push_back(&pkvector_int, random_num);
   }
+
+  assert(!int_vector_empty(&pkvector_int));
 
   for (int i = 0; i < N; ++i) {
     assert(stdvector_int[i] == pkvector_int.data[i]);
   }
+  assert(pkvector_int.size == stdvector_int.size());
+  assert(int_vector_back(&pkvector_int) == stdvector_int.back());
 
-  pk_vector_int_destroy(&pkvector_int);
+  // Test pop_back()
+  int_vector_pop_back(&pkvector_int);
+  stdvector_int.pop_back();
+  assert(int_vector_back(&pkvector_int) == stdvector_int.back());
+  assert(pkvector_int.size == stdvector_int.size());
+
+  int_vector_destroy(&pkvector_int);
 }
 
 int main() {

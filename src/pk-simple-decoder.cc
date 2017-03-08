@@ -22,6 +22,7 @@
 
 #include "pk-simple-decoder.h"
 #include "fst.h"
+#include "vector.h"
 #include <algorithm>
 #include <stdio.h>
 #include <math.h>
@@ -77,6 +78,10 @@ void pk_decoder_token_delete(pk_alloc_t *alloc, pk_decoder_token_t *self) {
     token = previous;
   }
 }
+
+PKVECTOR_DEFINE(pk_decoder_token_t *, token_vector)
+PKVECTOR_DEFINE(int, int_vector)
+PKVECTOR_DEFINE(int32_t, int32_vector)
 
 namespace kaldi {
 
@@ -238,33 +243,46 @@ bool PkSimpleDecoder::GetBestPath(
   }
   if (best_tok == NULL) return false;  // No output.
 
-  std::vector<pk_decoder_token_t> arcs_reverse;  // arcs in reverse order.
+  token_vector_t arcs_reverse;
+  token_vector_init(&arcs_reverse, &alloc_);
   for (pk_decoder_token_t *tok = best_tok; tok != NULL; tok = tok->previous) {
-    arcs_reverse.push_back(*tok);
+    token_vector_push_back(&arcs_reverse, tok);
   }
-  assert(arcs_reverse.back().next_state == pk_fst_startstate(fst_));
-  arcs_reverse.pop_back();  // that was a "fake" token... gives no info.
+  pk_decoder_token_t *back = token_vector_back(&arcs_reverse);
+  assert(back->next_state == pk_fst_startstate(fst_));
+  
+  // that was a "fake" token... gives no info.
+  token_vector_pop_back(&arcs_reverse);  
 
-  std::vector<int32_t> alignment;
-  std::vector<int32_t> words;
+  int32_vector_t alignment;
+  int32_vector_t words;
+  int32_vector_init(&alignment, &alloc_);
+  int32_vector_init(&words, &alloc_);
   float weight = 0;
-  for (ssize_t i = static_cast<ssize_t>(arcs_reverse.size())-1; i >= 0; i--) {
-    if (arcs_reverse[i].input_label != 0) alignment.push_back(arcs_reverse[i].input_label);
-    if (arcs_reverse[i].output_label != 0) words.push_back(arcs_reverse[i].output_label);
-
-    weight += arcs_reverse[i].arc_weight;
+  for (int idx = arcs_reverse.size - 1; idx >= 0; idx--) {
+    if (arcs_reverse.data[idx]->input_label != 0)  {
+      int32_vector_push_back(&alignment, arcs_reverse.data[idx]->input_label);
+    }
+    if (arcs_reverse.data[idx]->output_label != 0) {
+      int32_vector_push_back(&words, arcs_reverse.data[idx]->output_label);
+    }
+    weight += arcs_reverse.data[idx]->arc_weight;
   }
 
-  best_path->alignment = (int32_t *)pk_alloc(&alloc_, alignment.size() * sizeof(int32_t));
-  for (int idx = 0; idx < alignment.size(); ++idx) {
-    best_path->alignment[idx] = alignment[idx];
+  best_path->alignment = (int32_t *)pk_alloc(
+      &alloc_,
+      alignment.size * sizeof(int32_t));
+  for (int idx = 0; idx < alignment.size; ++idx) {
+    best_path->alignment[idx] = alignment.data[idx];
   }
-  best_path->alignment_size = (int32_t)alignment.size();
-  best_path->words = (int32_t *)pk_alloc(&alloc_, words.size() * sizeof(int32_t));
-  for (int idx = 0; idx < words.size(); ++idx) {
-    best_path->words[idx] = words[idx];
+  best_path->alignment_size = alignment.size;
+  best_path->words = (int32_t *)pk_alloc(
+      &alloc_,
+      words.size * sizeof(int32_t));
+  for (int idx = 0; idx < words.size; ++idx) {
+    best_path->words[idx] = words.data[idx];
   }
-  best_path->size = (int32_t)words.size();
+  best_path->size = words.size;
   best_path->weight = weight;
   best_path->alloc = &alloc_;
 
@@ -272,6 +290,9 @@ bool PkSimpleDecoder::GetBestPath(
     best_path->weight += pk_fst_final(fst_, best_tok->next_state);
   }
 
+  token_vector_destroy(&arcs_reverse);
+  int32_vector_destroy(&alignment);
+  int32_vector_destroy(&words);
   return true;
 }
 
@@ -332,7 +353,8 @@ void PkSimpleDecoder::ProcessEmitting(DecodableInterface *decodable) {
 void PkSimpleDecoder::ProcessNonemitting() {
   // Processes nonemitting arcs for one frame.  Propagates within
   // cur_toks_.
-  std::vector<int> queue_;
+  int_vector_t queue;
+  int_vector_init(&queue, &alloc_);
   double infinity = std::numeric_limits<double>::infinity();
   double best_cost = infinity;
   pk_hashlist_elem_t *elem = cur_toks_.head;
@@ -340,15 +362,15 @@ void PkSimpleDecoder::ProcessNonemitting() {
     int state = elem->key;
     pk_decoder_token_t *token = (pk_decoder_token_t *)elem->value;
 
-    queue_.push_back(state);
+    int_vector_push_back(&queue, state);
     best_cost = std::min(best_cost, (double)token->cost);
     elem = elem->next;
   }
   double cutoff = best_cost + beam_;
   
-  while (!queue_.empty()) {
-    int state = queue_.back();
-    queue_.pop_back();
+  while (!int_vector_empty(&queue)) {
+    int state = int_vector_back(&queue);
+    int_vector_pop_back(&queue);
     elem = pk_hashlist_find(&cur_toks_, (pk_hashlist_key_t)state);
     KALDI_ASSERT(elem != NULL);
     pk_decoder_token_t *tok = (pk_decoder_token_t *)elem->value;
@@ -373,13 +395,13 @@ void PkSimpleDecoder::ProcessNonemitting() {
                 &cur_toks_,
                 arc->next_state,
                 (pk_hashlist_value_t)new_tok);
-            queue_.push_back(arc->next_state);
+            int_vector_push_back(&queue, arc->next_state);
           } else {
             pk_decoder_token_t *token = (pk_decoder_token_t *)elem->value;
             if (token->cost > new_tok->cost) {
               pk_decoder_token_delete(&alloc_, token);
               elem->value = (pk_hashlist_value_t)new_tok;
-              queue_.push_back(arc->next_state);
+              int_vector_push_back(&queue, arc->next_state);
             } else {
               pk_decoder_token_delete(&alloc_, new_tok);
             }
@@ -388,6 +410,8 @@ void PkSimpleDecoder::ProcessNonemitting() {
       }
     }
   }
+
+  int_vector_destroy(&queue);
 }
 
 // static
@@ -415,7 +439,8 @@ void PkSimpleDecoder::PruneToks(BaseFloat beam, pk_hashlist_t *toks) {
     elem = elem->next;
   }
 
-  std::vector<int> retained;
+  int_vector_t retained;
+  int_vector_init(&retained, &alloc_);
   double cutoff = best_cost + beam;
   elem = toks->head;
   while (elem) {
@@ -423,21 +448,23 @@ void PkSimpleDecoder::PruneToks(BaseFloat beam, pk_hashlist_t *toks) {
     pk_decoder_token_t *token = (pk_decoder_token_t *)elem->value;
 
     if (token->cost < cutoff) {
-      retained.push_back(state);
+      int_vector_push_back(&retained, state);
     } else {
       pk_decoder_token_delete(&alloc_, token);
     }
     elem = elem->next;
   }
   pk_hashlist_clear(&tmp_toks_);
-  for (size_t i = 0; i < retained.size(); i++) {
-    int state = retained[i];
+  for (int i = 0; i < retained.size; i++) {
+    int state = retained.data[i];
     elem = pk_hashlist_find(toks, (pk_hashlist_key_t)state);
     KALDI_ASSERT(elem);
     pk_hashlist_insert(&tmp_toks_, (pk_hashlist_key_t)state, elem->value);
   }
-  KALDI_VLOG(2) <<  "Pruned to " << (retained.size()) << " toks.\n";
+  KALDI_VLOG(2) <<  "Pruned to " << retained.size << " toks.\n";
   pk_hashlist_swap(&tmp_toks_, toks);
+
+  int_vector_destroy(&retained);
 }
 
 } // end namespace kaldi.

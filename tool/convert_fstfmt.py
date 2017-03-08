@@ -32,7 +32,7 @@ for state in t.states:
     if state.final:
         finals.append(float(state.final))
     else:
-        finals.append(0)
+        finals.append(float("inf"))
 
     for arc in state.arcs:
         arcs.append((
