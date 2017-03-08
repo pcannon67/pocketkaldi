@@ -25,12 +25,13 @@
 #include "gmm/am-diag-gmm.h"
 #include "tree/context-dep.h"
 #include "hmm/transition-model.h"
-#include "fstext/fstext-lib.h"
 #include "pk-simple-decoder.h"
 #include "gmm/decodable-am-diag-gmm.h"
 #include "fstext/lattice-utils.h"
 #include "lat/kaldi-lattice.h"
 #include "base/timer.h"
+#include "fst.h"
+#include "util.h"
 
 
 int main(int argc, char *argv[]) {
@@ -87,7 +88,15 @@ int main(int argc, char *argv[]) {
       am_gmm.Read(ki.Stream(), binary);
     }
 
-    VectorFst<StdArc> *decode_fst = ReadFstKaldi(fst_in_filename);
+    pk_fst_t fst;
+    pk_status_t status;
+
+    pk_status_init(&status);
+    pk_fst_read(&fst, fst_in_filename.c_str(), &status);
+    if (!status.ok) {
+      puts(status.message);
+      exit(1);
+    }
 
     Int32VectorWriter words_writer(words_wspecifier);
 
@@ -106,7 +115,7 @@ int main(int argc, char *argv[]) {
     BaseFloat tot_like = 0.0;
     kaldi::int64 frame_count = 0;
     int num_success = 0, num_fail = 0;
-    PkSimpleDecoder decoder(*decode_fst, beam);
+    PkSimpleDecoder decoder(&fst, beam);
 
     for (; !feature_reader.Done(); feature_reader.Next()) {
       std::string utt = feature_reader.Key();
@@ -177,7 +186,7 @@ int main(int argc, char *argv[]) {
               << frame_count<<" frames.";
 
     delete word_syms;
-    delete decode_fst;
+    pk_fst_destroy(&fst);
     if (num_success != 0) return 0;
     else return 1;
   } catch(const std::exception &e) {

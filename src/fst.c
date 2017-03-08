@@ -143,13 +143,13 @@ static int calc_state_outcomming_arc_number(const pk_fst_t *fst, int state) {
   int next_state = -1;
 
   // Find the next state that have outcoming arcs
-  for (int state = state_idx + 1; state < state_number; ++state) {
-    if (arcidx[state] > 0) {
-      next_state = state;
+  for (int check_state = state + 1; check_state < state_number; ++check_state) {
+    if (arcidx[check_state] > 0) {
+      next_state = check_state;
       break;
     }
   }
-  int next_idx = next_state >= 0 ? arcidx[next_state] : state_number;
+  int next_idx = next_state >= 0 ? arcidx[next_state] : fst->arc_number;
   return next_idx - state_idx;
 }
 
@@ -170,7 +170,7 @@ void pk_fst_iterate_arc(
   assert(state < self->state_number && "State index out-of-boundary");
   iter->fst = self;
   iter->total = calc_state_outcomming_arc_number(self, state);
-  printf("iter->total = %d\n", iter->total);
+  assert(iter->total >= 0);
   iter->offset = 0;
   iter->base_idx = self->arc_index[state];
 }

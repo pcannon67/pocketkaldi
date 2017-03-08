@@ -21,10 +21,10 @@
 #define HAVE_ATLAS 1
 
 #include "pk-simple-decoder.h"
-#include "fstext/remove-eps-local.h"
 #include "fst.h"
 #include <algorithm>
 #include <stdio.h>
+#include <math.h>
 
 void pk_decoder_result_destroy(pk_decoder_result_t *best_path) {
   best_path->alignment_size = 0;
@@ -41,22 +41,22 @@ void pk_decoder_result_destroy(pk_decoder_result_t *best_path) {
 
 pk_decoder_token_t *pk_decoder_token_new(
     pk_alloc_t *alloc,
-    const fst::StdArc &arc,
+    const pk_fst_arc_t *arc,
     double acoustic_cost,
     pk_decoder_token_t *previous) {
   pk_decoder_token_t *self = (pk_decoder_token_t *)malloc(
       sizeof(pk_decoder_token_t));
   self->previous = previous;
   self->ref_count = 1;
-  self->input_label = arc.ilabel;
-  self->output_label = arc.olabel;
-  self->next_state = arc.nextstate;
-  self->arc_weight = arc.weight.Value() + acoustic_cost;
+  self->input_label = arc->input_label;
+  self->output_label = arc->output_label;
+  self->next_state = arc->next_state;
+  self->arc_weight = arc->weight + acoustic_cost;
   if (previous) {
     ++previous->ref_count;
-    self->cost = previous->cost + arc.weight.Value() + acoustic_cost;
+    self->cost = previous->cost + arc->weight + acoustic_cost;
   } else {
-    self->cost = arc.weight.Value() + acoustic_cost;
+    self->cost = arc->weight + acoustic_cost;
   }
   return self;
 }
@@ -81,7 +81,7 @@ void pk_decoder_token_delete(pk_alloc_t *alloc, pk_decoder_token_t *self) {
 namespace kaldi {
 
 PkSimpleDecoder::PkSimpleDecoder(
-    const fst::Fst<fst::StdArc> &fst,
+    const pk_fst_t *fst,
     BaseFloat beam): fst_(fst), beam_(beam) {
   pk_alloc_init(&alloc_);
   pk_hashlist_init(&cur_toks_, &alloc_);
@@ -90,7 +90,6 @@ PkSimpleDecoder::PkSimpleDecoder(
 }
 
 PkSimpleDecoder::~PkSimpleDecoder() {
-  puts("~PkSimpleDecoder");
   ClearToks(&cur_toks_);
   ClearToks(&prev_toks_);
   pk_hashlist_destroy(&cur_toks_);
@@ -116,13 +115,17 @@ void PkSimpleDecoder::InitDecoding() {
   ClearToks(&cur_toks_);
   ClearToks(&prev_toks_);
   // initialize decoding:
-  int start_state = fst_.Start();
+  int start_state = pk_fst_startstate(fst_);
   KALDI_ASSERT(start_state != fst::kNoStateId);
-  StdArc dummy_arc(0, 0, StdWeight::One(), start_state);
+  pk_fst_arc_t dummy_arc;
+  dummy_arc.input_label = 0;
+  dummy_arc.output_label = 0;
+  dummy_arc.next_state = start_state;
+  dummy_arc.weight = 0;
 
   pk_decoder_token_t *start_token = pk_decoder_token_new(
       &alloc_,
-      dummy_arc,
+      &dummy_arc,
       0,
       NULL);
   pk_hashlist_insert(&cur_toks_, start_state, start_token);
@@ -131,16 +134,16 @@ void PkSimpleDecoder::InitDecoding() {
 }
 
 void PkSimpleDecoder::AdvanceDecoding(DecodableInterface *decodable,
-                                      int32 max_num_frames) {
+                                      int max_num_frames) {
   KALDI_ASSERT(num_frames_decoded_ >= 0 &&
                "You must call InitDecoding() before AdvanceDecoding()");
-  int32 num_frames_ready = decodable->NumFramesReady();
+  int num_frames_ready = decodable->NumFramesReady();
   // num_frames_ready must be >= num_frames_decoded, or else
   // the number of frames ready must have decreased (which doesn't
   // make sense) or the decodable object changed between calls
   // (which isn't allowed).
   KALDI_ASSERT(num_frames_ready >= num_frames_decoded_);
-  int32 target_frames_decoded = num_frames_ready;
+  int target_frames_decoded = num_frames_ready;
   if (max_num_frames >= 0)
     target_frames_decoded = std::min(target_frames_decoded,
                                      num_frames_decoded_ + max_num_frames);
@@ -157,10 +160,10 @@ void PkSimpleDecoder::AdvanceDecoding(DecodableInterface *decodable,
 bool PkSimpleDecoder::ReachedFinal() const {
   pk_hashlist_elem_t *elem = cur_toks_.head;
   while (elem) {
-    StateId state = (StateId)elem->key;
+    int state = elem->key;
     pk_decoder_token_t *token = (pk_decoder_token_t *)elem->value;
     if (token->cost != std::numeric_limits<BaseFloat>::infinity() &&
-        fst_.Final(state) != StdWeight::Zero()) {
+        pk_fst_final(fst_, state) != INFINITY) {
       return true;
     }
     elem = elem->next;
@@ -179,7 +182,7 @@ BaseFloat PkSimpleDecoder::FinalRelativeCost() const {
   double best_cost_with_final = infinity;
   pk_hashlist_elem_t *elem = cur_toks_.head;
   while (elem) {
-    StateId state = (StateId)elem->key;
+    int state = elem->key;
     pk_decoder_token_t *token = (pk_decoder_token_t *)elem->value;
 
     // Note: Plus is taking the minimum cost, since we're in the tropical
@@ -187,7 +190,7 @@ BaseFloat PkSimpleDecoder::FinalRelativeCost() const {
     best_cost = std::min(best_cost, (double)token->cost);
     best_cost_with_final = std::min(
         best_cost_with_final,
-        double(token->cost + fst_.Final(state).Value()));
+        double(token->cost + pk_fst_final(fst_, state)));
     elem = elem->next;
   }
 
@@ -223,9 +226,9 @@ bool PkSimpleDecoder::GetBestPath(
 
     pk_hashlist_elem_t *elem = cur_toks_.head;
     while (elem) {
-      StateId state = (StateId)elem->key;
+      int state = elem->key;
       pk_decoder_token_t *token = (pk_decoder_token_t *)elem->value;
-      double this_cost = token->cost + fst_.Final(state).Value();
+      double this_cost = token->cost + pk_fst_final(fst_, state);
       if (this_cost != infinity && this_cost < best_cost) {
         best_cost = this_cost;
         best_tok = token;
@@ -236,9 +239,10 @@ bool PkSimpleDecoder::GetBestPath(
   if (best_tok == NULL) return false;  // No output.
 
   std::vector<pk_decoder_token_t> arcs_reverse;  // arcs in reverse order.
-  for (pk_decoder_token_t *tok = best_tok; tok != NULL; tok = tok->previous)
+  for (pk_decoder_token_t *tok = best_tok; tok != NULL; tok = tok->previous) {
     arcs_reverse.push_back(*tok);
-  assert(arcs_reverse.back().next_state == fst_.Start());
+  }
+  assert(arcs_reverse.back().next_state == pk_fst_startstate(fst_));
   arcs_reverse.pop_back();  // that was a "fake" token... gives no info.
 
   std::vector<int32_t> alignment;
@@ -265,7 +269,7 @@ bool PkSimpleDecoder::GetBestPath(
   best_path->alloc = &alloc_;
 
   if (is_final && use_final_probs) {
-    best_path->weight += fst_.Final(best_tok->next_state).Value();
+    best_path->weight += pk_fst_final(fst_, best_tok->next_state);
   }
 
   return true;
@@ -279,20 +283,21 @@ void PkSimpleDecoder::ProcessEmitting(DecodableInterface *decodable) {
   double cutoff = std::numeric_limits<BaseFloat>::infinity();
   pk_hashlist_elem_t *elem = prev_toks_.head;
   while (elem) {
-    StateId state = (StateId)elem->key;
+    int state = elem->key;
     pk_decoder_token_t *tok = (pk_decoder_token_t *)elem->value;
-    if (state != tok->next_state) printf("%d, %d\n", state, tok->next_state);
     KALDI_ASSERT(state == tok->next_state);
-    for (fst::ArcIterator<fst::Fst<StdArc> > aiter(fst_, state);
-         !aiter.Done();
-         aiter.Next()) {
-      const StdArc &arc = aiter.Value();
-      if (arc.ilabel != 0) {  // propagate..
-        BaseFloat acoustic_cost = -decodable->LogLikelihood(frame, arc.ilabel);
-        double total_cost = tok->cost + arc.weight.Value() + acoustic_cost;
+    pk_fst_iter_t arc_iter;
+    pk_fst_iterate_arc(fst_, state, &arc_iter);
+    const pk_fst_arc_t *arc = NULL;
+    while ((arc = pk_fst_iter_next(&arc_iter)) != NULL) {
+      if (arc->input_label != 0) {  // propagate..
+        BaseFloat acoustic_cost = -decodable->LogLikelihood(
+            frame,
+            arc->input_label);
+        double total_cost = tok->cost + arc->weight + acoustic_cost;
         
         if (total_cost > cutoff) continue;
-        if (total_cost + beam_  < cutoff) {
+        if (total_cost + beam_ < cutoff) {
           cutoff = total_cost + beam_;
         }
         pk_decoder_token_t *new_tok = pk_decoder_token_new(
@@ -302,11 +307,11 @@ void PkSimpleDecoder::ProcessEmitting(DecodableInterface *decodable) {
             tok); 
         pk_hashlist_elem_t *new_elem = pk_hashlist_find(
             &cur_toks_,
-            (pk_hashlist_key_t)arc.nextstate);
+            (pk_hashlist_key_t)arc->next_state);
         if (new_elem == NULL) {
           pk_hashlist_insert(
               &cur_toks_,
-              (pk_hashlist_key_t)arc.nextstate,
+              (pk_hashlist_key_t)arc->next_state,
               (pk_hashlist_value_t)new_tok);
         } else {
           pk_decoder_token_t *token = (pk_decoder_token_t *)new_elem->value;
@@ -327,12 +332,12 @@ void PkSimpleDecoder::ProcessEmitting(DecodableInterface *decodable) {
 void PkSimpleDecoder::ProcessNonemitting() {
   // Processes nonemitting arcs for one frame.  Propagates within
   // cur_toks_.
-  std::vector<StateId> queue_;
+  std::vector<int> queue_;
   double infinity = std::numeric_limits<double>::infinity();
   double best_cost = infinity;
   pk_hashlist_elem_t *elem = cur_toks_.head;
   while (elem) {
-    StateId state = (StateId)elem->key;
+    int state = elem->key;
     pk_decoder_token_t *token = (pk_decoder_token_t *)elem->value;
 
     queue_.push_back(state);
@@ -342,17 +347,17 @@ void PkSimpleDecoder::ProcessNonemitting() {
   double cutoff = best_cost + beam_;
   
   while (!queue_.empty()) {
-    StateId state = queue_.back();
+    int state = queue_.back();
     queue_.pop_back();
     elem = pk_hashlist_find(&cur_toks_, (pk_hashlist_key_t)state);
     KALDI_ASSERT(elem != NULL);
     pk_decoder_token_t *tok = (pk_decoder_token_t *)elem->value;
     KALDI_ASSERT(tok != NULL && state == tok->next_state);
-    for (fst::ArcIterator<fst::Fst<StdArc> > aiter(fst_, state);
-         !aiter.Done();
-         aiter.Next()) {
-      const StdArc &arc = aiter.Value();
-      if (arc.ilabel == 0) {  // propagate nonemitting only...
+    pk_fst_iter_t arc_iter;
+    pk_fst_iterate_arc(fst_, state, &arc_iter);
+    const pk_fst_arc_t *arc = NULL;
+    while ((arc = pk_fst_iter_next(&arc_iter)) != NULL) {
+      if (arc->input_label == 0) {  // propagate nonemitting only...
         const BaseFloat acoustic_cost = 0.0;
         pk_decoder_token_t *new_tok = pk_decoder_token_new(
             &alloc_,
@@ -362,19 +367,19 @@ void PkSimpleDecoder::ProcessNonemitting() {
         if (new_tok->cost > cutoff) {
           pk_decoder_token_delete(&alloc_, new_tok);
         } else {
-          elem = pk_hashlist_find(&cur_toks_, (pk_hashlist_key_t)arc.nextstate);
+          elem = pk_hashlist_find(&cur_toks_, arc->next_state);
           if (elem == NULL) {
             pk_hashlist_insert(
                 &cur_toks_,
-                (pk_hashlist_key_t)arc.nextstate,
+                arc->next_state,
                 (pk_hashlist_value_t)new_tok);
-            queue_.push_back(arc.nextstate);
+            queue_.push_back(arc->next_state);
           } else {
             pk_decoder_token_t *token = (pk_decoder_token_t *)elem->value;
             if (token->cost > new_tok->cost) {
               pk_decoder_token_delete(&alloc_, token);
               elem->value = (pk_hashlist_value_t)new_tok;
-              queue_.push_back(arc.nextstate);
+              queue_.push_back(arc->next_state);
             } else {
               pk_decoder_token_delete(&alloc_, new_tok);
             }
@@ -410,11 +415,11 @@ void PkSimpleDecoder::PruneToks(BaseFloat beam, pk_hashlist_t *toks) {
     elem = elem->next;
   }
 
-  std::vector<StateId> retained;
+  std::vector<int> retained;
   double cutoff = best_cost + beam;
   elem = toks->head;
   while (elem) {
-    StateId state = (StateId)elem->key;
+    int state = (int)elem->key;
     pk_decoder_token_t *token = (pk_decoder_token_t *)elem->value;
 
     if (token->cost < cutoff) {
@@ -426,7 +431,7 @@ void PkSimpleDecoder::PruneToks(BaseFloat beam, pk_hashlist_t *toks) {
   }
   pk_hashlist_clear(&tmp_toks_);
   for (size_t i = 0; i < retained.size(); i++) {
-    StateId state = retained[i];
+    int state = retained[i];
     elem = pk_hashlist_find(toks, (pk_hashlist_key_t)state);
     KALDI_ASSERT(elem);
     pk_hashlist_insert(&tmp_toks_, (pk_hashlist_key_t)state, elem->value);

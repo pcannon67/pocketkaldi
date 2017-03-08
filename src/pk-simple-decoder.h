@@ -27,7 +27,6 @@
 #include "hashlist.h"
 #include "fst.h"
 #include "alloc.h"
-#include "fst/fstlib.h"
 #include "util/stl-utils.h"
 #include "lat/kaldi-lattice.h"
 #include "itf/decodable-itf.h"
@@ -57,7 +56,7 @@ typedef struct pk_decoder_token_t {
 // Allocate and initialize a token for decoder, return the pointer to it
 pk_decoder_token_t *pk_decoder_token_new(
     pk_alloc_t *alloc,
-    const fst::StdArc &arc,
+    const pk_fst_arc_t *arc,
     double acoustic_cost,
     pk_decoder_token_t *previous);
 
@@ -73,12 +72,7 @@ namespace kaldi {
  */
 class PkSimpleDecoder {
  public:
-  typedef fst::StdArc StdArc;
-  typedef StdArc::Weight StdWeight;
-  typedef StdArc::Label Label;
-  typedef StdArc::StateId StateId;
-  
-  PkSimpleDecoder(const fst::Fst<fst::StdArc> &fst, BaseFloat beam);
+  PkSimpleDecoder(const pk_fst_t *fst, BaseFloat beam);
   ~PkSimpleDecoder();
 
   /// Decode this utterance.
@@ -136,8 +130,7 @@ class PkSimpleDecoder {
   pk_hashlist_t tmp_toks_;
   pk_alloc_t alloc_;
 
-  const fst::Fst<fst::StdArc> &fst_;
-  pk_fst_arc_t dummy_arc_;
+  const pk_fst_t *fst_;
   BaseFloat beam_;
   // Keep track of the number of frames decoded in the current file.
   int32 num_frames_decoded_;
