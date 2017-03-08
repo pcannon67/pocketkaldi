@@ -25,13 +25,13 @@
 #include "gmm/am-diag-gmm.h"
 #include "tree/context-dep.h"
 #include "hmm/transition-model.h"
-#include "pk-simple-decoder.h"
 #include "gmm/decodable-am-diag-gmm.h"
 #include "fstext/lattice-utils.h"
 #include "lat/kaldi-lattice.h"
 #include "base/timer.h"
 #include "fst.h"
 #include "util.h"
+#include "decoder.h"
 
 
 int main(int argc, char *argv[]) {

@@ -143,7 +143,8 @@ libpocketkaldi_a_AR = $(AR) $(ARFLAGS)
 libpocketkaldi_a_LIBADD =
 am__dirstamp = $(am__leading_dot)dirstamp
 am_libpocketkaldi_a_OBJECTS = src/alloc.$(OBJEXT) \
-	src/hashlist.$(OBJEXT) src/util.$(OBJEXT) src/fst.$(OBJEXT)
+	src/hashlist.$(OBJEXT) src/util.$(OBJEXT) src/fst.$(OBJEXT) \
+	src/decoder.$(OBJEXT)
 libpocketkaldi_a_OBJECTS = $(am_libpocketkaldi_a_OBJECTS)
 PROGRAMS = $(bin_PROGRAMS)
 am_fst_test_OBJECTS = test/fst_test-fst_test.$(OBJEXT)
@@ -156,7 +157,7 @@ hashlist_test_OBJECTS = $(am_hashlist_test_OBJECTS)
 hashlist_test_DEPENDENCIES = libpocketkaldi.a
 hashlist_test_LINK = $(CXXLD) $(hashlist_test_CXXFLAGS) $(CXXFLAGS) \
 	$(AM_LDFLAGS) $(LDFLAGS) -o $@
-am_main_OBJECTS = src/main.$(OBJEXT) src/pk-simple-decoder.$(OBJEXT)
+am_main_OBJECTS = src/main.$(OBJEXT)
 main_OBJECTS = $(am_main_OBJECTS)
 main_DEPENDENCIES = ../../kaldi/src/decoder/kaldi-decoder.a \
 	../../kaldi/src/lat/kaldi-lat.a \
@@ -552,14 +553,13 @@ ACLOCAL_AMFLAGS = -I m4
 AUTOMAKE_OPTIONS = gnu subdir-objects foreign
 AM_CXXFLAGS = -I$(top_srcdir)/../kaldi/src -I$(top_srcdir)/../kaldi/tools/openfst/src/include/ -I$(top_srcdir)/../kaldi/tools/ATLAS/include/ -I$(top_srcdir)/src -g -fPIC 
 AM_LDFLAGS = -pthread -ldl
-main_SOURCES = src/main.cc \
-               src/pk-simple-decoder.cc 
-
+main_SOURCES = src/main.cc 
 lib_LIBRARIES = libpocketkaldi.a
 libpocketkaldi_a_SOURCES = src/alloc.c \
                            src/hashlist.c \
                            src/util.c \
-                           src/fst.c
+                           src/fst.c \
+                           src/decoder.cc 
 
 main_LDADD = ../../kaldi/src/decoder/kaldi-decoder.a \
               ../../kaldi/src/lat/kaldi-lat.a \
@@ -684,6 +684,8 @@ src/hashlist.$(OBJEXT): src/$(am__dirstamp) \
 	src/$(DEPDIR)/$(am__dirstamp)
 src/util.$(OBJEXT): src/$(am__dirstamp) src/$(DEPDIR)/$(am__dirstamp)
 src/fst.$(OBJEXT): src/$(am__dirstamp) src/$(DEPDIR)/$(am__dirstamp)
+src/decoder.$(OBJEXT): src/$(am__dirstamp) \
+	src/$(DEPDIR)/$(am__dirstamp)
 
 libpocketkaldi.a: $(libpocketkaldi_a_OBJECTS) $(libpocketkaldi_a_DEPENDENCIES) $(EXTRA_libpocketkaldi_a_DEPENDENCIES) 
 	$(AM_V_at)-rm -f libpocketkaldi.a
@@ -753,8 +755,6 @@ hashlist_test$(EXEEXT): $(hashlist_test_OBJECTS) $(hashlist_test_DEPENDENCIES) $
 	@rm -f hashlist_test$(EXEEXT)
 	$(AM_V_CXXLD)$(hashlist_test_LINK) $(hashlist_test_OBJECTS) $(hashlist_test_LDADD) $(LIBS)
 src/main.$(OBJEXT): src/$(am__dirstamp) src/$(DEPDIR)/$(am__dirstamp)
-src/pk-simple-decoder.$(OBJEXT): src/$(am__dirstamp) \
-	src/$(DEPDIR)/$(am__dirstamp)
 
 main$(EXEEXT): $(main_OBJECTS) $(main_DEPENDENCIES) $(EXTRA_main_DEPENDENCIES) 
 	@rm -f main$(EXEEXT)
@@ -775,10 +775,10 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/alloc.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/decoder.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/fst.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/hashlist.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/main.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/pk-simple-decoder.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/util.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/fst_test-fst_test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/hashlist_test-hashlist_test.Po@am__quote@

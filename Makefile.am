@@ -4,14 +4,14 @@ AM_CXXFLAGS = -I$(top_srcdir)/../kaldi/src -I$(top_srcdir)/../kaldi/tools/openfs
 AM_LDFLAGS = -pthread -ldl
 
 bin_PROGRAMS = main
-main_SOURCES = src/main.cc \
-               src/pk-simple-decoder.cc 
+main_SOURCES = src/main.cc 
 
 lib_LIBRARIES = libpocketkaldi.a
 libpocketkaldi_a_SOURCES = src/alloc.c \
                            src/hashlist.c \
                            src/util.c \
-                           src/fst.c
+                           src/fst.c \
+                           src/decoder.cc 
 
 main_LDADD = ../../kaldi/src/decoder/kaldi-decoder.a \
               ../../kaldi/src/lat/kaldi-lat.a \

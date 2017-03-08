@@ -20,7 +20,7 @@
 
 #define HAVE_ATLAS 1
 
-#include "pk-simple-decoder.h"
+#include "decoder.h"
 #include "fst.h"
 #include "vector.h"
 #include <algorithm>
