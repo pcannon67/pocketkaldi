@@ -16,10 +16,14 @@ void pk_alloc_init(pk_alloc_t *alloc);
 
 // Allocate a memory block contains at least `size` bytes
 POCKETKALDI_EXPORT
-void *pk_alloc(pk_alloc_t *, size_t size);
+void *pk_alloc(pk_alloc_t *alloc, size_t size);
+
+// Allocate a memory block contains at least `size` bytes
+POCKETKALDI_EXPORT
+void *pk_realloc(pk_alloc_t *alloc, void *ptr, size_t size);
 
 // Remove a memory block pointed by `pointer`
 POCKETKALDI_EXPORT
-void pk_free(pk_alloc_t *, void *pointer);
+void pk_free(pk_alloc_t *alloc, void *pointer);
 
 #endif  // POCKETKALDI_ALLOC_H_

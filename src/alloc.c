@@ -14,6 +14,11 @@ void *pk_alloc(pk_alloc_t *alloc, size_t size) {
   return malloc(size);
 }
 
+void *pk_realloc(pk_alloc_t *alloc, void *ptr, size_t size) {
+  UNUSED(alloc);
+  return realloc(ptr, size);
+}
+
 void pk_free(pk_alloc_t *alloc, void *pointer) {
   UNUSED(alloc);
   free(pointer);
