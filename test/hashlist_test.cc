@@ -31,9 +31,7 @@ void TestHashList(pk_hashlist_t *hashlist) {
 
 void SimpleTest() {
   pk_hashlist_t hashlist;
-  pk_alloc_t alloc;
-  pk_alloc_init(&alloc);
-  pk_hashlist_init(&hashlist, &alloc);
+  pk_hashlist_init(&hashlist);
 
   TestHashList(&hashlist);
 
@@ -42,9 +40,7 @@ void SimpleTest() {
 
 void TestClear() {
   pk_hashlist_t hashlist;
-  pk_alloc_t alloc;
-  pk_alloc_init(&alloc);
-  pk_hashlist_init(&hashlist, &alloc);
+  pk_hashlist_init(&hashlist);
 
   TestHashList(&hashlist);
   pk_hashlist_clear(&hashlist);
@@ -56,10 +52,8 @@ void TestClear() {
 void TestSwap() {
   char *NULL_CPTR = NULL;
   pk_hashlist_t hashlist1, hashlist2;
-  pk_alloc_t alloc;
-  pk_alloc_init(&alloc);
-  pk_hashlist_init(&hashlist1, &alloc);
-  pk_hashlist_init(&hashlist2, &alloc);
+  pk_hashlist_init(&hashlist1);
+  pk_hashlist_init(&hashlist2);
 
   pk_hashlist_insert(&hashlist1, 23, NULL_CPTR + 23);
   pk_hashlist_insert(&hashlist1, 29, NULL_CPTR + 29);
@@ -85,15 +79,13 @@ void TestSwap() {
 
 void Benchmark() {
   pk_hashlist_t hashlist;
-  pk_alloc_t alloc;
   std::unordered_map<int, int> hashmap;
   char *null = NULL;
   srand(1024);
 
   int n_samples = 10000000;
 
-  pk_alloc_init(&alloc);
-  pk_hashlist_init(&hashlist, &alloc);
+  pk_hashlist_init(&hashlist);
   int sum = 0;
   clock_t start = clock();
   for (int i = 0; i < n_samples; ++i) {

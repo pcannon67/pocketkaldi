@@ -7,8 +7,7 @@ bin_PROGRAMS = main
 main_SOURCES = src/main.cc 
 
 lib_LIBRARIES = libpocketkaldi.a
-libpocketkaldi_a_SOURCES = src/alloc.c \
-                           src/hashlist.c \
+libpocketkaldi_a_SOURCES = src/hashlist.c \
                            src/util.c \
                            src/fst.c \
                            src/pcm_reader.c \

@@ -49,3 +49,15 @@ void pk_status_fail(pk_status_t *status, int errcode, const char *fmsg, ...) {
       error_prefix,
       msg);
 }
+
+void *pk_alloc(size_t size) {
+  return malloc(size);
+}
+
+void *pk_realloc(void *ptr, size_t size) {
+  return realloc(ptr, size);
+}
+
+void pk_free(void *pointer) {
+  free(pointer);
+}

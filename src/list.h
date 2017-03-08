@@ -8,7 +8,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdbool.h>
-#include "alloc.h"
+#include "util.h"
 
 #define PKLIST_INITIALSIZE 16;
 
@@ -17,16 +17,12 @@
       int size;                                                                \
       T *data;                                                                 \
       int _capability;                                                         \
-      pk_alloc_t *_alloc;                                                      \
     } name##_t;                                                                \
                                                                                \
-    static inline void name##_init(                                            \
-        name##_t *self,                                                        \
-        pk_alloc_t *alloc) {                                                   \
-      self->_alloc = alloc;                                                    \
+    static inline void name##_init(name##_t *self) {                           \
       self->_capability = PKLIST_INITIALSIZE;                                  \
       self->size = 0;                                                          \
-      self->data = (T *)pk_alloc(self->_alloc, self->_capability * sizeof(T)); \
+      self->data = (T *)pk_alloc(self->_capability * sizeof(T));               \
     }                                                                          \
                                                                                \
     static inline void name##_push_back(                                       \
@@ -35,7 +31,6 @@
       if (self->size >= self->_capability) {                                   \
         int new_capability = self->_capability * 2;                            \
         void *new_ptr = pk_realloc(                                            \
-            self->_alloc,                                                      \
             self->data,                                                        \
             new_capability * sizeof(T));                                       \
         self->_capability = new_capability;                                    \
@@ -47,11 +42,10 @@
     }                                                                          \
                                                                                \
     static inline void name##_destroy(name##_t *self) {                        \
-      pk_free(self->_alloc, self->data);                                       \
+      pk_free(self->data);                                                     \
       self->size = 0;                                                          \
       self->_capability = 0;                                                   \
       self->data = NULL;                                                       \
-      self->_alloc = NULL;                                                     \
     }                                                                          \
                                                                                \
     static inline T name##_back(name##_t *self) {                              \

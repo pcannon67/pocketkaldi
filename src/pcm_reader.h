@@ -25,7 +25,6 @@
 #define POCKETKALDI_PCM_READER_H_
 
 #include <stdint.h>
-#include "alloc.h"
 #include "util.h"
 
 typedef struct pk_16kpcm_t {
@@ -39,7 +38,6 @@ POCKETKALDI_EXPORT
 void pk_16kpcm_read(
     const char *filename,
     pk_16kpcm_t *pcm_data,
-    pk_alloc_t *alloc,
     pk_status_t *status);
 
 #endif

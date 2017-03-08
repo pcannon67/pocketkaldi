@@ -143,10 +143,9 @@ am__v_AR_1 =
 libpocketkaldi_a_AR = $(AR) $(ARFLAGS)
 libpocketkaldi_a_LIBADD =
 am__dirstamp = $(am__leading_dot)dirstamp
-am_libpocketkaldi_a_OBJECTS = src/alloc.$(OBJEXT) \
-	src/hashlist.$(OBJEXT) src/util.$(OBJEXT) src/fst.$(OBJEXT) \
-	src/pcm_reader.$(OBJEXT) src/decoder.$(OBJEXT) \
-	src/srfft.$(OBJEXT)
+am_libpocketkaldi_a_OBJECTS = src/hashlist.$(OBJEXT) \
+	src/util.$(OBJEXT) src/fst.$(OBJEXT) src/pcm_reader.$(OBJEXT) \
+	src/decoder.$(OBJEXT) src/srfft.$(OBJEXT)
 libpocketkaldi_a_OBJECTS = $(am_libpocketkaldi_a_OBJECTS)
 PROGRAMS = $(bin_PROGRAMS)
 am_fst_test_OBJECTS = test/fst_test-fst_test.$(OBJEXT)
@@ -568,8 +567,7 @@ AM_CXXFLAGS = -I$(top_srcdir)/../kaldi/src -I$(top_srcdir)/../kaldi/tools/openfs
 AM_LDFLAGS = -pthread -ldl
 main_SOURCES = src/main.cc 
 lib_LIBRARIES = libpocketkaldi.a
-libpocketkaldi_a_SOURCES = src/alloc.c \
-                           src/hashlist.c \
+libpocketkaldi_a_SOURCES = src/hashlist.c \
                            src/util.c \
                            src/fst.c \
                            src/pcm_reader.c \
@@ -700,7 +698,6 @@ src/$(am__dirstamp):
 src/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) src/$(DEPDIR)
 	@: > src/$(DEPDIR)/$(am__dirstamp)
-src/alloc.$(OBJEXT): src/$(am__dirstamp) src/$(DEPDIR)/$(am__dirstamp)
 src/hashlist.$(OBJEXT): src/$(am__dirstamp) \
 	src/$(DEPDIR)/$(am__dirstamp)
 src/util.$(OBJEXT): src/$(am__dirstamp) src/$(DEPDIR)/$(am__dirstamp)
@@ -810,7 +807,6 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
-@AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/alloc.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/decoder.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/fst.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/hashlist.Po@am__quote@

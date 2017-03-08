@@ -26,7 +26,6 @@
 #include <stdint.h>
 #include "hashlist.h"
 #include "fst.h"
-#include "alloc.h"
 #include "util/stl-utils.h"
 #include "lat/kaldi-lattice.h"
 #include "itf/decodable-itf.h"
@@ -37,7 +36,6 @@ typedef struct {
   int32_t *words;
   int32_t size;
   float weight;
-  pk_alloc_t *alloc;
 } pk_decoder_result_t;
 
 // Destroy the pk_decoder_result_t.
@@ -55,13 +53,12 @@ typedef struct pk_decoder_token_t {
 
 // Allocate and initialize a token for decoder, return the pointer to it
 pk_decoder_token_t *pk_decoder_token_new(
-    pk_alloc_t *alloc,
     const pk_fst_arc_t *arc,
     double acoustic_cost,
     pk_decoder_token_t *previous);
 
 // Delete the token when there is no reference to it
-void pk_decoder_token_delete(pk_alloc_t *alloc, pk_decoder_token_t *self);
+void pk_decoder_token_delete(pk_decoder_token_t *self);
 
 
 namespace kaldi {
@@ -128,7 +125,6 @@ class PkSimpleDecoder {
   pk_hashlist_t cur_toks_;
   pk_hashlist_t prev_toks_;
   pk_hashlist_t tmp_toks_;
-  pk_alloc_t alloc_;
 
   const pk_fst_t *fst_;
   BaseFloat beam_;

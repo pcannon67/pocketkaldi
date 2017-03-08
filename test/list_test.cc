@@ -4,17 +4,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <vector>
-#include "alloc.h"
+#include "util.h"
 #include "list.h"
 
 PKLIST_DEFINE(int, int_list)
 
 void TestIntList() {
   int_list_t pklist_int;
-  pk_alloc_t alloc;
 
-  pk_alloc_init(&alloc);
-  int_list_init(&pklist_int, &alloc);
+  int_list_init(&pklist_int);
 
   assert(int_list_empty(&pklist_int));
 

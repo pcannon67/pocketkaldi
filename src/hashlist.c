@@ -5,6 +5,7 @@
 
 #include <assert.h>
 #include "pocketkaldi.h"
+#include "util.h"
 
 #define PK_HASHLIST_INITIALSIZE 16
 #define MAX_ELEMBUCKET_RATIO 1.0
@@ -28,13 +29,12 @@ static void insert_to_bucket(
 // position
 static void extend_buckets(pk_hashlist_t *hashlist, int new_size) {
   pk_hashlist_elem_t **new_buckets = (pk_hashlist_elem_t **)pk_alloc(
-      hashlist->alloc,
       sizeof(pk_hashlist_elem_t *) * new_size);
   for (int i = 0; i < new_size; ++i) {
     new_buckets[i] = NULL;
   }
   
-  pk_free(hashlist->alloc, hashlist->buckets);
+  pk_free(hashlist->buckets);
   hashlist->buckets = new_buckets;
   hashlist->bucket_size = new_size;
 
@@ -46,10 +46,8 @@ static void extend_buckets(pk_hashlist_t *hashlist, int new_size) {
   }
 }
 
-void pk_hashlist_init(pk_hashlist_t *hashlist, pk_alloc_t *alloc) {
-  hashlist->alloc = alloc;
+void pk_hashlist_init(pk_hashlist_t *hashlist) {
   hashlist->buckets = (pk_hashlist_elem_t **)pk_alloc(
-      hashlist->alloc,
       sizeof(pk_hashlist_elem_t *) * PK_HASHLIST_INITIALSIZE);
   for (int i = 0; i < PK_HASHLIST_INITIALSIZE; ++i) {
     hashlist->buckets[i] = NULL;
@@ -62,24 +60,23 @@ void pk_hashlist_init(pk_hashlist_t *hashlist, pk_alloc_t *alloc) {
 }
 
 void pk_hashlist_destroy(pk_hashlist_t *hashlist) {
-  pk_free(hashlist->alloc, hashlist->buckets);
+  pk_free(hashlist->buckets);
   hashlist->buckets = NULL;
   hashlist->bucket_size = 0;
   hashlist->size = 0;
-  hashlist->alloc = NULL;
 
   // Free all elements
   pk_hashlist_elem_t *elem = hashlist->head;
   while (elem) {
     pk_hashlist_elem_t *next = elem->next;
-    pk_free(hashlist->alloc, elem);
+    pk_free(elem);
     elem = next;
   }
 
   elem = hashlist->empty_head;
   while (elem) {
     pk_hashlist_elem_t *next = elem->next;
-    pk_free(hashlist->alloc, elem);
+    pk_free(elem);
     elem = next;
   }
 
@@ -123,7 +120,6 @@ void pk_hashlist_insert(
       hashlist->empty_head = elem->next;
     } else {
       elem = (pk_hashlist_elem_t *)pk_alloc(
-          hashlist->alloc,
           sizeof(pk_hashlist_elem_t));
     }
     elem->key = key;
@@ -173,9 +169,6 @@ void pk_hashlist_clear(pk_hashlist_t *hashlist) {
 }
 
 void pk_hashlist_swap(pk_hashlist_t *hashlist1, pk_hashlist_t *hashlist2) {
-  // We must assure they are using the same allocator
-  assert(hashlist1->alloc == hashlist2->alloc);
-
   pk_hashlist_elem_t **buckets = hashlist1->buckets;
   hashlist1->buckets = hashlist2->buckets;
   hashlist2->buckets = buckets;

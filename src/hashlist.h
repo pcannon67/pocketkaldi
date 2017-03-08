@@ -2,7 +2,6 @@
 
 #include <stdbool.h>
 #include <stdint.h>
-#include "alloc.h"
 #include "pocketkaldi.h"
 
 #ifndef POCKETKALDI_HASHLIST_H_
@@ -26,13 +25,12 @@ struct pk_hashlist_t {
   pk_hashlist_elem_t *head;
   pk_hashlist_elem_t *tail;  // Points to the last element of list
   pk_hashlist_elem_t *empty_head;
-  pk_alloc_t *alloc;
 };
 typedef struct pk_hashlist_t pk_hashlist_t;
 
 // Initialize the hashlist
 POCKETKALDI_EXPORT
-void pk_hashlist_init(pk_hashlist_t *hashlist, pk_alloc_t *alloc);
+void pk_hashlist_init(pk_hashlist_t *hashlist);
 
 // Destory the hashlist, free all elements it allocates. But the memory that
 // each value points to will not be freed

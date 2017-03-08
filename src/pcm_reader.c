@@ -7,7 +7,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
-#include "alloc.h"
 #include "util.h"
 
 // Reads an int32 value from ptr and move it forward
@@ -46,7 +45,6 @@ static bool check_tag(char **ptr, const char *expected) {
 void pk_16kpcm_read(
     const char *filename,
     pk_16kpcm_t *pcm_data,
-    pk_alloc_t *alloc,
     pk_status_t *status) {
   FILE *fd = fopen(filename, "rb");
   if (fd == NULL) {
@@ -70,7 +68,7 @@ void pk_16kpcm_read(
   char *pcm_buffer = NULL;
   char *current_ptr = NULL;
   if (status->ok) {
-    pcm_buffer = (char *)pk_alloc(alloc, file_size);
+    pcm_buffer = (char *)pk_alloc(file_size);
     current_ptr = pcm_buffer;
     int bytes_read = fread(pcm_buffer, 1, file_size, fd);
     if (bytes_read != file_size) {
@@ -229,7 +227,7 @@ void pk_16kpcm_read(
   // Read data
   if (status->ok) {
     int num_samples = (int)subchunk2_size / (bits_per_sample / 8);
-    pcm_data->data = (float *)pk_alloc(alloc, num_samples * sizeof(float));
+    pcm_data->data = (float *)pk_alloc(num_samples * sizeof(float));
     pcm_data->num_samples = num_samples;
     for (int i = 0; i < num_samples && status->ok; ++i) {
       switch (bits_per_sample) {
@@ -259,5 +257,5 @@ void pk_16kpcm_read(
 
   // Free resources
   if (fd != NULL) fclose(fd);
-  if (pcm_buffer != NULL) pk_free(alloc, pcm_buffer);
+  if (pcm_buffer != NULL) pk_free(pcm_buffer);
 }

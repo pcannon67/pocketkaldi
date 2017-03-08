@@ -4,6 +4,7 @@
 #define POCKETKALDI_UTIL_H_
 
 #include <stdbool.h>
+#include <stdlib.h>
 #include "pocketkaldi.h"
 
 #define PK_STATUS_MSGMAX 256
@@ -26,5 +27,17 @@ void pk_status_init(pk_status_t *status);
 // Set status to failed state with message
 POCKETKALDI_EXPORT
 void pk_status_fail(pk_status_t *status, int errcode, const char *fmsg, ...);
+
+// Allocate a memory block contains at least `size` bytes
+POCKETKALDI_EXPORT
+void *pk_alloc(size_t size);
+
+// Allocate a memory block contains at least `size` bytes
+POCKETKALDI_EXPORT
+void *pk_realloc(void *ptr, size_t size);
+
+// Remove a memory block pointed by `pointer`
+POCKETKALDI_EXPORT
+void pk_free(void *pointer);
 
 #endif  // POCKETKALDI_UTIL_H_
