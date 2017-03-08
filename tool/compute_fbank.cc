@@ -90,7 +90,7 @@ int main(int argc, char **argv) {
 
     // Store the waveform into pk_vector_t type
     pk_vector_t wave;
-    pk_vector_init(&wave, waveform.Dim());
+    pk_vector_init(&wave, waveform.Dim(), NAN);
     for (int i = 0; i < waveform.Dim(); ++i) {
       wave.data[i] = waveform(i);
     }

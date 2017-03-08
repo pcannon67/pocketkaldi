@@ -3,7 +3,11 @@
 #ifndef POCKETKALDI_MATRIX_H_
 #define POCKETKALDI_MATRIX_H_
 
+#include <stdio.h>
 #include "pocketkaldi.h"
+#include "util.h"
+
+#define PK_VECTOR_SECTION "VEC0"
 
 // pk_matrix_t is a column-major matrix type in pocketkaldi
 typedef struct pk_matrix_t {
@@ -40,9 +44,14 @@ void pk_matrix_destroy(pk_matrix_t *self);
 POCKETKALDI_EXPORT
 const pk_vector_t pk_matrix_getcol(const pk_matrix_t *self, int col);
 
-// Initialize the vector
+// Initialize the vector and fill with a number. If fill_with == NAN, doesn't
+// fill anything
 POCKETKALDI_EXPORT
-void pk_vector_init(pk_vector_t *self, int dim);
+void pk_vector_init(pk_vector_t *self, int dim, float fill_with);
+
+// Read vector from file. If failed, set status to fail
+POCKETKALDI_EXPORT
+void pk_vector_read(pk_vector_t *self, pk_readable_t *fd, pk_status_t *status);
 
 // Resize the vector
 POCKETKALDI_EXPORT
@@ -56,9 +65,36 @@ void pk_vector_fill(pk_vector_t *self, float value);
 POCKETKALDI_EXPORT
 void pk_vector_copyfrom(pk_vector_t *self, const float *source, int n);
 
+// Copy vector from src to dest
+POCKETKALDI_EXPORT
+void pk_vector_copy(pk_vector_t *dest, const pk_vector_t *src);
+
 // Calculates the dot product of self and vec
 POCKETKALDI_EXPORT
 float pk_vector_dot(const pk_vector_t *self, const pk_vector_t *vec);
+
+// Add vec to self
+POCKETKALDI_EXPORT
+void pk_vector_add(const pk_vector_t *self, const pk_vector_t *vec);
+
+// Add scalar * vec to self
+POCKETKALDI_EXPORT
+void pk_vector_scalaradd(
+    const pk_vector_t *self,
+    float scalar,
+    const pk_vector_t *vec);
+
+// Subtract vec from self
+POCKETKALDI_EXPORT
+void pk_vector_subtract(const pk_vector_t *self, const pk_vector_t *vec);
+
+// Add element-wise squaring of vec to self
+POCKETKALDI_EXPORT
+void pk_vector_add2(const pk_vector_t *self, const pk_vector_t *vec);
+
+// Subtract element-wise squaring of vec from self
+POCKETKALDI_EXPORT
+void pk_vector_subtract2(const pk_vector_t *self, const pk_vector_t *vec);
 
 // Creates a subvector according to self. It just borrows the memory of self.
 // So to avoid issues it couldn't be destroyed and modified.

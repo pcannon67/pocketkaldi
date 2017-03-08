@@ -38,6 +38,10 @@
 #define M_2PI 6.283185307179586476925286766559005
 #endif
 
+#ifndef M_SQRT1_2
+#define M_SQRT1_2 0.70710678118654752440
+#endif
+
 static void compute_tables(pk_srfft_t *self) {
   int imax, lg2, i, j;
   int m, m2, m4, m8, nel, n;

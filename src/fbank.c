@@ -6,6 +6,7 @@
 #include <assert.h>
 #include <float.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <math.h>
 #include "pcm_reader.h"
 #include "matrix.h"
@@ -81,7 +82,7 @@ static void extract_window(
   int end_sample = start_sample + FRAME_LENGTH;
 
   // Some assertion of index
-  assert(start_sample >= 0 && end_sample < wave->dim &&
+  assert(start_sample >= 0 && end_sample <= wave->dim &&
          "start_sample or end_sample out of range");
   assert(window->dim >= FRAME_LENGTH &&
          "window->dim should be greater than FRAME_LENGTH");
@@ -124,13 +125,13 @@ static void melbanks_init(pk_melbanks_t *self, int frame_length_padded) {
 
   // Initialize the mel bins
   for (int i = 0; i < PK_FBANK_DIM; ++i) {
-    pk_vector_init(&(self->bins[i]), 0);
+    pk_vector_init(&self->bins[i], 0, NAN);
     self->fftbin_offset[i] = 0;
   }
 
   // Calculate the fft-bins vector of each bin
   pk_vector_t this_fftbin;
-  pk_vector_init(&this_fftbin, num_fft_bins);
+  pk_vector_init(&this_fftbin, num_fft_bins, NAN);
   for (int bin_idx = 0; bin_idx < PK_FBANK_DIM; ++bin_idx) {
     float left_mel = mel_low_freq + bin_idx * mel_freq_delta;
     float center_mel = mel_low_freq + (bin_idx + 1) * mel_freq_delta;
@@ -292,7 +293,7 @@ void pk_fbank_init(pk_fbank_t *self) {
   self->frame_length_padded = frame_length_padded;
 
   // Hamming window
-  pk_vector_init(&(self->window_function), 0);
+  pk_vector_init(&(self->window_function), 0, NAN);
   hammingwindow_init(&(self->window_function));
 }
 
@@ -309,8 +310,8 @@ void pk_fbank_compute(
 
   // Extract fbank feature frame by frame
   pk_vector_t window, buffer;
-  pk_vector_init(&window, self->frame_length_padded);
-  pk_vector_init(&buffer, self->frame_length_padded);
+  pk_vector_init(&window, self->frame_length_padded, NAN);
+  pk_vector_init(&buffer, self->frame_length_padded, NAN);
   for (int i = 0; i < num_frames; ++i) {
     extract_window(wave, i, &(self->window_function), &window);
     pk_vector_t frame = pk_matrix_getcol(fbank_feature, i);

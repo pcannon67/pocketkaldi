@@ -36,26 +36,14 @@ void pk_fst_read(
   pk_status_init(status);
   pk_fst_init(self);
 
-  FILE *fd = fopen(filename, "rb");
-  if (fd == NULL) pk_status_fail(status, PK_STATUS_IOERROR, filename);
+  pk_readable_t *fd = pk_readable_open(filename, status);
 
   int64_t filesize = 0;
-  if (status->ok) {
-    fseek(fd, 0L, SEEK_END);
-    filesize = ftell(fd);
-    fseek(fd, 0L, SEEK_SET);
-    
-    // Fst file should have at least 16 bytes (4 int32_t)
-    if (filesize <= 16) pk_status_fail(status, PK_STATUS_CORRUPTED, filename);
-  }
-
   char *data = NULL;
   if (status->ok) {
+    filesize = fd->filesize;
     data = (char *)malloc(filesize);
-    int blocks_read = fread(data, filesize, 1, fd);
-    if (blocks_read != 1) {
-      pk_status_fail(status, PK_STATUS_IOERROR, filename);
-    }
+    pk_readable_read(fd, data, filesize, status);
   }
   char *buffer_ptr = data;
 
@@ -64,7 +52,7 @@ void pk_fst_read(
     int32_t magic_number = *((int32_t *)buffer_ptr);
     buffer_ptr += 4;
     if (magic_number != 0x3323) {
-      pk_status_fail(status, PK_STATUS_CORRUPTED, filename);
+      PK_STATUS_CORRUPTED(status, "%s", filename);
     }
   }
 
@@ -91,7 +79,7 @@ void pk_fst_read(
     self->start_state = start_state;
 
     if (expected_size != filesize) {
-      pk_status_fail(status, PK_STATUS_CORRUPTED, filename);
+      PK_STATUS_CORRUPTED(status, "%s", filename);
     }
   }
 
@@ -122,11 +110,11 @@ void pk_fst_read(
     }
 
     if (buffer_ptr - data != filesize) {
-      pk_status_fail(status, PK_STATUS_CORRUPTED, filename);
+      PK_STATUS_CORRUPTED(status, "%s", filename);
     }
   }
 
-  if (fd != NULL) fclose(fd);
+  if (fd != NULL) pk_readable_close(fd);
   if (!status->ok) {
     pk_fst_destroy(self);
   }

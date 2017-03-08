@@ -17,6 +17,8 @@ AC_ARG_WITH([kaldi],
   AC_MSG_ERROR([--with-kaidi=DIR: path of Kaldi should be specified])
 fi
 # Extracts ATLASLIBS from KALDI_ROOT\src\kaldi.mk
+eval with_kaldi=$with_kaldi
+echo "Kaldi path is: " $with_kaldi
 atlaslibs=`cat $with_kaldi/src/kaldi.mk | grep -oP '(?<=^ATLASLIBS = )(.*)$'`
 if test "x$atlaslibs" = "x"; then
   AC_MSG_ERROR([--with-kaidi=DIR: unable to find ATLASLIBS line in kaldi_dir/src/kaldi.mk])

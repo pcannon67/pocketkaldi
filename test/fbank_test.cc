@@ -19,7 +19,7 @@ void TestFbank() {
   pk_vector_t pcm_data;
 
   pk_status_init(&status);
-  pk_vector_init(&pcm_data, 0);
+  pk_vector_init(&pcm_data, 0, NAN);
   pk_16kpcm_read(wav_file.c_str(), &pcm_data, &status);
   assert(status.ok);
 

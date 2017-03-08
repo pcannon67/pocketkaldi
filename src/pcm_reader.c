@@ -46,22 +46,12 @@ void pk_16kpcm_read(
     const char *filename,
     pk_vector_t *pcm_data,
     pk_status_t *status) {
-  FILE *fd = fopen(filename, "rb");
-  if (fd == NULL) {
-    pk_status_fail(status, PK_STATUS_IOERROR, "failed to open: %s", filename);
-  }
+  pk_readable_t *fd = pk_readable_open(filename, status);
 
   // Gets file length
   int64_t file_size = 0;
   if (status->ok) {
-    fseek(fd, 0, SEEK_END);
-    file_size = ftell(fd);
-    fseek(fd, 0, SEEK_SET);
-
-    // A PCM file should have at least 44bytes
-    if (file_size < 44) {
-      pk_status_fail(status, PK_STATUS_IOERROR, "file is too small: %s", filename);
-    }
+    file_size = fd->filesize;
   }
 
   // Read file content into pcm_buffer
@@ -70,30 +60,20 @@ void pk_16kpcm_read(
   if (status->ok) {
     pcm_buffer = (char *)pk_alloc(file_size);
     current_ptr = pcm_buffer;
-    int bytes_read = fread(pcm_buffer, 1, file_size, fd);
-    if (bytes_read != file_size) {
-      pk_status_fail(
-          status,
-          PK_STATUS_IOERROR,
-          "failed to read, %lld bytes expected, but %lld got: %s",
-          file_size,
-          bytes_read,
-          filename);
-    }
+    pk_readable_read(fd, pcm_buffer, file_size, status);
   }
 
   // RIFF chunk
   if (status->ok && check_tag(&current_ptr, "RIFF") == false) {
-    pk_status_fail(status, PK_STATUS_CORRUPTED,"chunk_name == 'RIFF' expected: %s", filename);
+    PK_STATUS_CORRUPTED(status, "chunk_name == 'RIFF' expected: %s", filename);
   }
 
   // Chunk size
   if (status->ok) {
     int chunk_size = read_int32(&current_ptr);
     if (chunk_size != file_size - 8) {
-      pk_status_fail(
+      PK_STATUS_CORRUPTED(
           status,
-          PK_STATUS_CORRUPTED,
           "chunk_size == %lld expected, but %lld found: %s",
           file_size - 8,
           chunk_size,
@@ -103,29 +83,20 @@ void pk_16kpcm_read(
 
   // Format == "WAVE"
   if (status->ok && check_tag(&current_ptr, "WAVE") == false) {
-    pk_status_fail(
-        status,
-        PK_STATUS_CORRUPTED,
-        "Format == 'WAVE' expected: %s",
-        filename);
+    PK_STATUS_CORRUPTED(status, "Format == 'WAVE' expected: %s", filename);
   }
 
   // subchunk1 is "fmt "
   if (status->ok && check_tag(&current_ptr, "fmt ") == false) {
-    pk_status_fail(
-        status,
-        PK_STATUS_CORRUPTED,
-        "subchunk1 == 'fmt ' expected: %s",
-        filename);
+    PK_STATUS_CORRUPTED(status, "subchunk1 == 'fmt ' expected: %s", filename);
   }  
 
   // subchunk1_size
   if (status->ok) {
     int subchunk1_size = read_int32(&current_ptr);
     if (subchunk1_size != 16) {
-      pk_status_fail(
+      PK_STATUS_CORRUPTED(
           status,
-          PK_STATUS_CORRUPTED,
           "subchunk1_size == 16 expected, but %d found: %s",
           subchunk1_size,
           filename);
@@ -136,9 +107,8 @@ void pk_16kpcm_read(
   if (status->ok) {
     int audio_format = read_int16(&current_ptr);
     if (audio_format != 1) {
-      pk_status_fail(
+      PK_STATUS_CORRUPTED(
           status,
-          PK_STATUS_CORRUPTED,
           "audio_format == 1 (PCM) expected, but %d found: %s",
           audio_format,
           filename);
@@ -149,9 +119,8 @@ void pk_16kpcm_read(
   if (status->ok) {
     int num_channels = read_int16(&current_ptr);
     if (num_channels != 1) {
-      pk_status_fail(
+      PK_STATUS_CORRUPTED(
           status,
-          PK_STATUS_CORRUPTED,
           "num_channels == 1 (mono) expected, but %d found: %s",
           num_channels,
           filename);
@@ -163,10 +132,9 @@ void pk_16kpcm_read(
   if (status->ok) {
     sample_rate = read_int32(&current_ptr);
     if (sample_rate != 16000) {
-      pk_status_fail(
+      PK_STATUS_CORRUPTED(
           status,
-          PK_STATUS_CORRUPTED,
-          "sample_rate == 1 (mono) expected, but %d found: %s",
+          "sample_rate == 16000 expected, but %d found: %s",
           sample_rate,
           filename);
     }
@@ -180,9 +148,8 @@ void pk_16kpcm_read(
     bits_per_sample = read_int16(&current_ptr);
 
     if (bytes_rate != sample_rate * bits_per_sample / 8) {
-      pk_status_fail(
+      PK_STATUS_CORRUPTED(
           status,
-          PK_STATUS_CORRUPTED,
           "bytes_rate == %d expected, but %d found: %s",
           sample_rate * bits_per_sample / 8,
           bytes_rate,
@@ -190,9 +157,8 @@ void pk_16kpcm_read(
     }
 
     if (block_align != bits_per_sample / 8) {
-      pk_status_fail(
+      PK_STATUS_CORRUPTED(
           status,
-          PK_STATUS_CORRUPTED,
           "block_align == %d expected, but %d found: %s",
           bits_per_sample / 8,
           block_align,
@@ -202,11 +168,7 @@ void pk_16kpcm_read(
 
   // subchunk2 "data"
   if (status->ok && check_tag(&current_ptr, "data") == false) {
-    pk_status_fail(
-        status,
-        PK_STATUS_CORRUPTED,
-        "subchunk2 == 'data' expected: %s",
-        filename);
+    PK_STATUS_CORRUPTED(status, "subchunk2 == 'data' expected: %s", filename);
   }
 
   // subchunk2_size
@@ -214,9 +176,8 @@ void pk_16kpcm_read(
   if (status->ok) {
     subchunk2_size = read_int32(&current_ptr);
     if (subchunk2_size != file_size - 44) {
-      pk_status_fail(
+      PK_STATUS_CORRUPTED(
           status,
-          PK_STATUS_CORRUPTED,
           "subchunk2_size == %lld expected, but %lld found: %s",
           file_size - 44,
           subchunk2_size,
@@ -240,9 +201,8 @@ void pk_16kpcm_read(
           pcm_data->data[i] = read_int32(&current_ptr);
           break;
         default:
-          pk_status_fail(
+          PK_STATUS_CORRUPTED(
               status,
-              PK_STATUS_CORRUPTED,
               "bits_per_sample == 8, 16 or 32 expected, but %d found: %s",
               bits_per_sample,
               filename);
@@ -255,6 +215,6 @@ void pk_16kpcm_read(
   }
 
   // Free resources
-  if (fd != NULL) fclose(fd);
+  if (fd != NULL) pk_readable_close(fd);
   if (pcm_buffer != NULL) pk_free(pcm_buffer);
 }

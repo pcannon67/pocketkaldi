@@ -22,10 +22,9 @@
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
-#include "gmm/am-diag-gmm.h"
+#include "nnet2/decodable-am-nnet.h"
 #include "tree/context-dep.h"
 #include "hmm/transition-model.h"
-#include "gmm/decodable-am-diag-gmm.h"
 #include "fstext/lattice-utils.h"
 #include "lat/kaldi-lattice.h"
 #include "base/timer.h"
@@ -42,6 +41,7 @@ int main(int argc, char *argv[]) {
     using fst::VectorFst;
     using fst::StdArc;
     using fst::ReadFstKaldi;
+    using namespace kaldi::nnet2;
 
     const char *usage =
         "Decode features using GMM-based model.\n"
@@ -80,12 +80,12 @@ int main(int argc, char *argv[]) {
         lattice_wspecifier = po.GetOptArg(6);
 
     TransitionModel trans_model;
-    AmDiagGmm am_gmm;
+    AmNnet am_nnet;
     {
       bool binary;
       Input ki(model_in_filename, &binary);
       trans_model.Read(ki.Stream(), binary);
-      am_gmm.Read(ki.Stream(), binary);
+      am_nnet.Read(ki.Stream(), binary);
     }
 
     pk_fst_t fst;
@@ -119,7 +119,7 @@ int main(int argc, char *argv[]) {
 
     for (; !feature_reader.Done(); feature_reader.Next()) {
       std::string utt = feature_reader.Key();
-      Matrix<BaseFloat> features (feature_reader.Value());
+      const CuMatrix<BaseFloat> features(feature_reader.Value());
       feature_reader.FreeCurrent();
       if (features.NumRows() == 0) {
         KALDI_WARN << "Zero-length utterance: " << utt;
@@ -127,9 +127,13 @@ int main(int argc, char *argv[]) {
         continue;
       }
 
-      DecodableAmDiagGmmScaled gmm_decodable(am_gmm, trans_model, features,
-                                             acoustic_scale);
-      decoder.Decode(&gmm_decodable);
+      bool pad_input = true;
+      DecodableAmNnet nnet_decodable(trans_model,
+                                     am_nnet,
+                                     features,
+                                     pad_input,
+                                     acoustic_scale);
+      decoder.Decode(&nnet_decodable);
 
       VectorFst<LatticeArc> decoded;  // linear FST.
       pk_decoder_result_t best_path;

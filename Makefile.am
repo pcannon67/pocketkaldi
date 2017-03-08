@@ -1,7 +1,8 @@
 ACLOCAL_AMFLAGS = -I m4
 AUTOMAKE_OPTIONS = gnu subdir-objects foreign
-AM_CXXFLAGS = -I$(top_srcdir)/../kaldi/src -I$(top_srcdir)/../kaldi/tools/openfst/src/include/ -I$(top_srcdir)/../kaldi/tools/ATLAS/include/ -I$(top_srcdir)/src -g -fPIC 
-AM_LDFLAGS = -pthread -ldl
+AM_CFLAGS = -std=c99
+AM_CXXFLAGS = -I$(top_srcdir)/../kaldi/src -I$(top_srcdir)/../kaldi/tools/openfst/src/include/ -I$(top_srcdir)/../kaldi/tools/ATLAS/include/ -I$(top_srcdir)/src -g -fPIC -std=c++11
+AM_LDFLAGS = -pthread -ldl -L/usr/local/cuda-8.0/lib64/
 
 bin_PROGRAMS = main
 main_SOURCES = src/main.cc 
@@ -14,24 +15,32 @@ libpocketkaldi_a_SOURCES = src/hashlist.c \
                            src/pcm_reader.c \
                            src/decoder.cc \
                            src/srfft.c \
-                           src/fbank.c
+                           src/fbank.c \
+                           src/strlcpy.c \
+                           src/cmvn.c
 
 main_LDADD = $(KALDI_ROOT)/src/decoder/kaldi-decoder.a \
               $(KALDI_ROOT)/src/lat/kaldi-lat.a \
               $(KALDI_ROOT)/src/fstext/kaldi-fstext.a \
               $(KALDI_ROOT)/src/hmm/kaldi-hmm.a \
+              $(KALDI_ROOT)/src/nnet2/kaldi-nnet2.a \
               $(KALDI_ROOT)/src/feat/kaldi-feat.a \
               $(KALDI_ROOT)/src/transform/kaldi-transform.a \
               $(KALDI_ROOT)/src/gmm/kaldi-gmm.a \
               $(KALDI_ROOT)/src/tree/kaldi-tree.a \
               $(KALDI_ROOT)/src/util/kaldi-util.a \
               $(KALDI_ROOT)/src/thread/kaldi-thread.a \
+              $(KALDI_ROOT)/src/cudamatrix/kaldi-cudamatrix.a \
               $(KALDI_ROOT)/src/matrix/kaldi-matrix.a \
               $(KALDI_ROOT)/src/base/kaldi-base.a \
               $(ATLASLIBS) \
               $(KALDI_ROOT)/tools/openfst/lib/libfst.a \
               libpocketkaldi.a \
-              -ldl
+              -ldl \
+              -lcudart \
+              -lcuda \
+              -lcurand \
+              -lcublas
 
 if ENABLE_TOOLS
     bin_PROGRAMS += compute_fbank
@@ -45,8 +54,8 @@ if ENABLE_TOOLS
                           libpocketkaldi.a
 endif
 
-TESTS = hashlist_test list_test fst_test srfft_test fbank_test
-check_PROGRAMS = hashlist_test list_test fst_test srfft_test fbank_test
+TESTS = hashlist_test list_test fst_test srfft_test fbank_test cmvn_test
+check_PROGRAMS = hashlist_test list_test fst_test srfft_test fbank_test cmvn_test
 
 hashlist_test_SOURCES = test/hashlist_test.cc
 hashlist_test_CXXFLAGS = $(AM_CXXFLAGS) -std=c++11 -I$(top_srcdir)/src
@@ -67,6 +76,10 @@ srfft_test_LDADD = libpocketkaldi.a
 fbank_test_SOURCES = test/fbank_test.cc
 fbank_test_CXXFLAGS = $(AM_CXXFLAGS) -std=c++11 -I$(top_srcdir)/src -DTESTDIR=\"$(top_srcdir)/test/\"
 fbank_test_LDADD = libpocketkaldi.a
+
+cmvn_test_SOURCES = test/cmvn_test.cc
+cmvn_test_CXXFLAGS = $(AM_CXXFLAGS) -std=c++11 -I$(top_srcdir)/src -DTESTDIR=\"$(top_srcdir)/test/\"
+cmvn_test_LDADD = libpocketkaldi.a
 
 if ENABLE_TOOLS
     TESTS_ENVIRONMENT = export testdir=$(top_srcdir)/test && export kaldiroot=$(KALDI_ROOT) &&
