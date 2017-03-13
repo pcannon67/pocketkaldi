@@ -17,7 +17,9 @@ libpocketkaldi_a_SOURCES = src/hashlist.c \
                            src/srfft.c \
                            src/fbank.c \
                            src/strlcpy.c \
-                           src/cmvn.c
+                           src/cmvn.c \
+                           src/transition.c \
+                           src/nnet.c
 
 main_LDADD = $(KALDI_ROOT)/src/decoder/kaldi-decoder.a \
               $(KALDI_ROOT)/src/lat/kaldi-lat.a \
@@ -43,7 +45,7 @@ main_LDADD = $(KALDI_ROOT)/src/decoder/kaldi-decoder.a \
               -lcublas
 
 if ENABLE_TOOLS
-    bin_PROGRAMS += compute_fbank
+    bin_PROGRAMS += compute_fbank extract_id2pdf
     compute_fbank_SOURCES = tool/compute_fbank.cc
     compute_fbank_LDADD = $(KALDI_ROOT)/src/util/kaldi-util.a \
                           $(KALDI_ROOT)/src/thread/kaldi-thread.a \
@@ -52,10 +54,31 @@ if ENABLE_TOOLS
                           $(KALDI_ROOT)/src/base/kaldi-base.a \
                           $(ATLASLIBS) \
                           libpocketkaldi.a
+
+    extract_id2pdf_SOURCES = tool/extract_id2pdf.cc
+    extract_id2pdf_LDADD = $(KALDI_ROOT)/src/util/kaldi-util.a \
+                           $(KALDI_ROOT)/src/hmm/kaldi-hmm.a \
+                           $(KALDI_ROOT)/src/matrix/kaldi-matrix.a \
+                           $(KALDI_ROOT)/src/base/kaldi-base.a \
+                           $(ATLASLIBS) \
+                           libpocketkaldi.a
 endif
 
-TESTS = hashlist_test list_test fst_test srfft_test fbank_test cmvn_test
-check_PROGRAMS = hashlist_test list_test fst_test srfft_test fbank_test cmvn_test
+TESTS = hashlist_test \
+        list_test \
+        fst_test \
+        srfft_test \
+        fbank_test \
+        cmvn_test \
+        nnet_test
+
+check_PROGRAMS = hashlist_test \
+                 list_test \
+                 fst_test \
+                 srfft_test \
+                 fbank_test \
+                 cmvn_test \
+                 nnet_test
 
 hashlist_test_SOURCES = test/hashlist_test.cc
 hashlist_test_CXXFLAGS = $(AM_CXXFLAGS) -std=c++11 -I$(top_srcdir)/src
@@ -80,6 +103,10 @@ fbank_test_LDADD = libpocketkaldi.a
 cmvn_test_SOURCES = test/cmvn_test.cc
 cmvn_test_CXXFLAGS = $(AM_CXXFLAGS) -std=c++11 -I$(top_srcdir)/src -DTESTDIR=\"$(top_srcdir)/test/\"
 cmvn_test_LDADD = libpocketkaldi.a
+
+nnet_test_SOURCES = test/nnet_test.cc
+nnet_test_CXXFLAGS = $(AM_CXXFLAGS) -std=c++11 -I$(top_srcdir)/src -DTESTDIR=\"$(top_srcdir)/test/\"
+nnet_test_LDADD = libpocketkaldi.a
 
 if ENABLE_TOOLS
     TESTS_ENVIRONMENT = export testdir=$(top_srcdir)/test && export kaldiroot=$(KALDI_ROOT) &&

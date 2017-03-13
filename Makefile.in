@@ -78,13 +78,13 @@ NORMAL_UNINSTALL = :
 PRE_UNINSTALL = :
 POST_UNINSTALL = :
 bin_PROGRAMS = main$(EXEEXT) $(am__EXEEXT_1)
-@ENABLE_TOOLS_TRUE@am__append_1 = compute_fbank
+@ENABLE_TOOLS_TRUE@am__append_1 = compute_fbank extract_id2pdf
 TESTS = hashlist_test$(EXEEXT) list_test$(EXEEXT) fst_test$(EXEEXT) \
 	srfft_test$(EXEEXT) fbank_test$(EXEEXT) cmvn_test$(EXEEXT) \
-	$(am__append_2)
+	nnet_test$(EXEEXT) $(am__append_2)
 check_PROGRAMS = hashlist_test$(EXEEXT) list_test$(EXEEXT) \
 	fst_test$(EXEEXT) srfft_test$(EXEEXT) fbank_test$(EXEEXT) \
-	cmvn_test$(EXEEXT)
+	cmvn_test$(EXEEXT) nnet_test$(EXEEXT)
 @ENABLE_TOOLS_TRUE@am__append_2 = test/test_compute_fbank.sh
 subdir = .
 DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/Makefile.am \
@@ -146,9 +146,10 @@ am_libpocketkaldi_a_OBJECTS = src/hashlist.$(OBJEXT) \
 	src/util.$(OBJEXT) src/fst.$(OBJEXT) src/matrix.$(OBJEXT) \
 	src/pcm_reader.$(OBJEXT) src/decoder.$(OBJEXT) \
 	src/srfft.$(OBJEXT) src/fbank.$(OBJEXT) src/strlcpy.$(OBJEXT) \
-	src/cmvn.$(OBJEXT)
+	src/cmvn.$(OBJEXT) src/transition.$(OBJEXT) src/nnet.$(OBJEXT)
 libpocketkaldi_a_OBJECTS = $(am_libpocketkaldi_a_OBJECTS)
-@ENABLE_TOOLS_TRUE@am__EXEEXT_1 = compute_fbank$(EXEEXT)
+@ENABLE_TOOLS_TRUE@am__EXEEXT_1 = compute_fbank$(EXEEXT) \
+@ENABLE_TOOLS_TRUE@	extract_id2pdf$(EXEEXT)
 PROGRAMS = $(bin_PROGRAMS)
 am_cmvn_test_OBJECTS = test/cmvn_test-cmvn_test.$(OBJEXT)
 cmvn_test_OBJECTS = $(am_cmvn_test_OBJECTS)
@@ -164,6 +165,16 @@ am__DEPENDENCIES_1 =
 @ENABLE_TOOLS_TRUE@	$(KALDI_ROOT)/src/util/kaldi-util.a \
 @ENABLE_TOOLS_TRUE@	$(KALDI_ROOT)/src/thread/kaldi-thread.a \
 @ENABLE_TOOLS_TRUE@	$(KALDI_ROOT)/src/feat/kaldi-feat.a \
+@ENABLE_TOOLS_TRUE@	$(KALDI_ROOT)/src/matrix/kaldi-matrix.a \
+@ENABLE_TOOLS_TRUE@	$(KALDI_ROOT)/src/base/kaldi-base.a \
+@ENABLE_TOOLS_TRUE@	$(am__DEPENDENCIES_1) libpocketkaldi.a
+am__extract_id2pdf_SOURCES_DIST = tool/extract_id2pdf.cc
+@ENABLE_TOOLS_TRUE@am_extract_id2pdf_OBJECTS =  \
+@ENABLE_TOOLS_TRUE@	tool/extract_id2pdf.$(OBJEXT)
+extract_id2pdf_OBJECTS = $(am_extract_id2pdf_OBJECTS)
+@ENABLE_TOOLS_TRUE@extract_id2pdf_DEPENDENCIES =  \
+@ENABLE_TOOLS_TRUE@	$(KALDI_ROOT)/src/util/kaldi-util.a \
+@ENABLE_TOOLS_TRUE@	$(KALDI_ROOT)/src/hmm/kaldi-hmm.a \
 @ENABLE_TOOLS_TRUE@	$(KALDI_ROOT)/src/matrix/kaldi-matrix.a \
 @ENABLE_TOOLS_TRUE@	$(KALDI_ROOT)/src/base/kaldi-base.a \
 @ENABLE_TOOLS_TRUE@	$(am__DEPENDENCIES_1) libpocketkaldi.a
@@ -204,6 +215,11 @@ main_DEPENDENCIES = $(KALDI_ROOT)/src/decoder/kaldi-decoder.a \
 	$(KALDI_ROOT)/src/matrix/kaldi-matrix.a \
 	$(KALDI_ROOT)/src/base/kaldi-base.a $(am__DEPENDENCIES_1) \
 	$(KALDI_ROOT)/tools/openfst/lib/libfst.a libpocketkaldi.a
+am_nnet_test_OBJECTS = test/nnet_test-nnet_test.$(OBJEXT)
+nnet_test_OBJECTS = $(am_nnet_test_OBJECTS)
+nnet_test_DEPENDENCIES = libpocketkaldi.a
+nnet_test_LINK = $(CXXLD) $(nnet_test_CXXFLAGS) $(CXXFLAGS) \
+	$(AM_LDFLAGS) $(LDFLAGS) -o $@
 am_srfft_test_OBJECTS = test/srfft_test-srfft_test.$(OBJEXT)
 srfft_test_OBJECTS = $(am_srfft_test_OBJECTS)
 srfft_test_DEPENDENCIES = libpocketkaldi.a
@@ -255,13 +271,16 @@ am__v_CXXLD_ = $(am__v_CXXLD_@AM_DEFAULT_V@)
 am__v_CXXLD_0 = @echo "  CXXLD   " $@;
 am__v_CXXLD_1 = 
 SOURCES = $(libpocketkaldi_a_SOURCES) $(cmvn_test_SOURCES) \
-	$(compute_fbank_SOURCES) $(fbank_test_SOURCES) \
-	$(fst_test_SOURCES) $(hashlist_test_SOURCES) \
-	$(list_test_SOURCES) $(main_SOURCES) $(srfft_test_SOURCES)
+	$(compute_fbank_SOURCES) $(extract_id2pdf_SOURCES) \
+	$(fbank_test_SOURCES) $(fst_test_SOURCES) \
+	$(hashlist_test_SOURCES) $(list_test_SOURCES) $(main_SOURCES) \
+	$(nnet_test_SOURCES) $(srfft_test_SOURCES)
 DIST_SOURCES = $(libpocketkaldi_a_SOURCES) $(cmvn_test_SOURCES) \
-	$(am__compute_fbank_SOURCES_DIST) $(fbank_test_SOURCES) \
+	$(am__compute_fbank_SOURCES_DIST) \
+	$(am__extract_id2pdf_SOURCES_DIST) $(fbank_test_SOURCES) \
 	$(fst_test_SOURCES) $(hashlist_test_SOURCES) \
-	$(list_test_SOURCES) $(main_SOURCES) $(srfft_test_SOURCES)
+	$(list_test_SOURCES) $(main_SOURCES) $(nnet_test_SOURCES) \
+	$(srfft_test_SOURCES)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -588,7 +607,9 @@ libpocketkaldi_a_SOURCES = src/hashlist.c \
                            src/srfft.c \
                            src/fbank.c \
                            src/strlcpy.c \
-                           src/cmvn.c
+                           src/cmvn.c \
+                           src/transition.c \
+                           src/nnet.c
 
 main_LDADD = $(KALDI_ROOT)/src/decoder/kaldi-decoder.a \
               $(KALDI_ROOT)/src/lat/kaldi-lat.a \
@@ -622,6 +643,14 @@ main_LDADD = $(KALDI_ROOT)/src/decoder/kaldi-decoder.a \
 @ENABLE_TOOLS_TRUE@                          $(ATLASLIBS) \
 @ENABLE_TOOLS_TRUE@                          libpocketkaldi.a
 
+@ENABLE_TOOLS_TRUE@extract_id2pdf_SOURCES = tool/extract_id2pdf.cc
+@ENABLE_TOOLS_TRUE@extract_id2pdf_LDADD = $(KALDI_ROOT)/src/util/kaldi-util.a \
+@ENABLE_TOOLS_TRUE@                           $(KALDI_ROOT)/src/hmm/kaldi-hmm.a \
+@ENABLE_TOOLS_TRUE@                           $(KALDI_ROOT)/src/matrix/kaldi-matrix.a \
+@ENABLE_TOOLS_TRUE@                           $(KALDI_ROOT)/src/base/kaldi-base.a \
+@ENABLE_TOOLS_TRUE@                           $(ATLASLIBS) \
+@ENABLE_TOOLS_TRUE@                           libpocketkaldi.a
+
 hashlist_test_SOURCES = test/hashlist_test.cc
 hashlist_test_CXXFLAGS = $(AM_CXXFLAGS) -std=c++11 -I$(top_srcdir)/src
 hashlist_test_LDADD = libpocketkaldi.a
@@ -640,6 +669,9 @@ fbank_test_LDADD = libpocketkaldi.a
 cmvn_test_SOURCES = test/cmvn_test.cc
 cmvn_test_CXXFLAGS = $(AM_CXXFLAGS) -std=c++11 -I$(top_srcdir)/src -DTESTDIR=\"$(top_srcdir)/test/\"
 cmvn_test_LDADD = libpocketkaldi.a
+nnet_test_SOURCES = test/nnet_test.cc
+nnet_test_CXXFLAGS = $(AM_CXXFLAGS) -std=c++11 -I$(top_srcdir)/src -DTESTDIR=\"$(top_srcdir)/test/\"
+nnet_test_LDADD = libpocketkaldi.a
 @ENABLE_TOOLS_TRUE@TESTS_ENVIRONMENT = export testdir=$(top_srcdir)/test && export kaldiroot=$(KALDI_ROOT) &&
 all: all-am
 
@@ -746,6 +778,9 @@ src/fbank.$(OBJEXT): src/$(am__dirstamp) src/$(DEPDIR)/$(am__dirstamp)
 src/strlcpy.$(OBJEXT): src/$(am__dirstamp) \
 	src/$(DEPDIR)/$(am__dirstamp)
 src/cmvn.$(OBJEXT): src/$(am__dirstamp) src/$(DEPDIR)/$(am__dirstamp)
+src/transition.$(OBJEXT): src/$(am__dirstamp) \
+	src/$(DEPDIR)/$(am__dirstamp)
+src/nnet.$(OBJEXT): src/$(am__dirstamp) src/$(DEPDIR)/$(am__dirstamp)
 
 libpocketkaldi.a: $(libpocketkaldi_a_OBJECTS) $(libpocketkaldi_a_DEPENDENCIES) $(EXTRA_libpocketkaldi_a_DEPENDENCIES) 
 	$(AM_V_at)-rm -f libpocketkaldi.a
@@ -820,6 +855,12 @@ tool/compute_fbank.$(OBJEXT): tool/$(am__dirstamp) \
 compute_fbank$(EXEEXT): $(compute_fbank_OBJECTS) $(compute_fbank_DEPENDENCIES) $(EXTRA_compute_fbank_DEPENDENCIES) 
 	@rm -f compute_fbank$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(compute_fbank_OBJECTS) $(compute_fbank_LDADD) $(LIBS)
+tool/extract_id2pdf.$(OBJEXT): tool/$(am__dirstamp) \
+	tool/$(DEPDIR)/$(am__dirstamp)
+
+extract_id2pdf$(EXEEXT): $(extract_id2pdf_OBJECTS) $(extract_id2pdf_DEPENDENCIES) $(EXTRA_extract_id2pdf_DEPENDENCIES) 
+	@rm -f extract_id2pdf$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(extract_id2pdf_OBJECTS) $(extract_id2pdf_LDADD) $(LIBS)
 test/fbank_test-fbank_test.$(OBJEXT): test/$(am__dirstamp) \
 	test/$(DEPDIR)/$(am__dirstamp)
 
@@ -849,6 +890,12 @@ src/main.$(OBJEXT): src/$(am__dirstamp) src/$(DEPDIR)/$(am__dirstamp)
 main$(EXEEXT): $(main_OBJECTS) $(main_DEPENDENCIES) $(EXTRA_main_DEPENDENCIES) 
 	@rm -f main$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(main_OBJECTS) $(main_LDADD) $(LIBS)
+test/nnet_test-nnet_test.$(OBJEXT): test/$(am__dirstamp) \
+	test/$(DEPDIR)/$(am__dirstamp)
+
+nnet_test$(EXEEXT): $(nnet_test_OBJECTS) $(nnet_test_DEPENDENCIES) $(EXTRA_nnet_test_DEPENDENCIES) 
+	@rm -f nnet_test$(EXEEXT)
+	$(AM_V_CXXLD)$(nnet_test_LINK) $(nnet_test_OBJECTS) $(nnet_test_LDADD) $(LIBS)
 test/srfft_test-srfft_test.$(OBJEXT): test/$(am__dirstamp) \
 	test/$(DEPDIR)/$(am__dirstamp)
 
@@ -872,17 +919,21 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/hashlist.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/main.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/matrix.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/nnet.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/pcm_reader.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/srfft.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/strlcpy.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/transition.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/util.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/cmvn_test-cmvn_test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/fbank_test-fbank_test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/fst_test-fst_test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/hashlist_test-hashlist_test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/list_test-list_test.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/nnet_test-nnet_test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/srfft_test-srfft_test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tool/$(DEPDIR)/compute_fbank.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@tool/$(DEPDIR)/extract_id2pdf.Po@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(AM_V_CC)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.o$$||'`;\
@@ -985,6 +1036,20 @@ test/list_test-list_test.obj: test/list_test.cc
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='test/list_test.cc' object='test/list_test-list_test.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(list_test_CXXFLAGS) $(CXXFLAGS) -c -o test/list_test-list_test.obj `if test -f 'test/list_test.cc'; then $(CYGPATH_W) 'test/list_test.cc'; else $(CYGPATH_W) '$(srcdir)/test/list_test.cc'; fi`
+
+test/nnet_test-nnet_test.o: test/nnet_test.cc
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(nnet_test_CXXFLAGS) $(CXXFLAGS) -MT test/nnet_test-nnet_test.o -MD -MP -MF test/$(DEPDIR)/nnet_test-nnet_test.Tpo -c -o test/nnet_test-nnet_test.o `test -f 'test/nnet_test.cc' || echo '$(srcdir)/'`test/nnet_test.cc
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) test/$(DEPDIR)/nnet_test-nnet_test.Tpo test/$(DEPDIR)/nnet_test-nnet_test.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='test/nnet_test.cc' object='test/nnet_test-nnet_test.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(nnet_test_CXXFLAGS) $(CXXFLAGS) -c -o test/nnet_test-nnet_test.o `test -f 'test/nnet_test.cc' || echo '$(srcdir)/'`test/nnet_test.cc
+
+test/nnet_test-nnet_test.obj: test/nnet_test.cc
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(nnet_test_CXXFLAGS) $(CXXFLAGS) -MT test/nnet_test-nnet_test.obj -MD -MP -MF test/$(DEPDIR)/nnet_test-nnet_test.Tpo -c -o test/nnet_test-nnet_test.obj `if test -f 'test/nnet_test.cc'; then $(CYGPATH_W) 'test/nnet_test.cc'; else $(CYGPATH_W) '$(srcdir)/test/nnet_test.cc'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) test/$(DEPDIR)/nnet_test-nnet_test.Tpo test/$(DEPDIR)/nnet_test-nnet_test.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='test/nnet_test.cc' object='test/nnet_test-nnet_test.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(nnet_test_CXXFLAGS) $(CXXFLAGS) -c -o test/nnet_test-nnet_test.obj `if test -f 'test/nnet_test.cc'; then $(CYGPATH_W) 'test/nnet_test.cc'; else $(CYGPATH_W) '$(srcdir)/test/nnet_test.cc'; fi`
 
 test/srfft_test-srfft_test.o: test/srfft_test.cc
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(srfft_test_CXXFLAGS) $(CXXFLAGS) -MT test/srfft_test-srfft_test.o -MD -MP -MF test/$(DEPDIR)/srfft_test-srfft_test.Tpo -c -o test/srfft_test-srfft_test.o `test -f 'test/srfft_test.cc' || echo '$(srcdir)/'`test/srfft_test.cc
@@ -1238,6 +1303,13 @@ fbank_test.log: fbank_test$(EXEEXT)
 cmvn_test.log: cmvn_test$(EXEEXT)
 	@p='cmvn_test$(EXEEXT)'; \
 	b='cmvn_test'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
+nnet_test.log: nnet_test$(EXEEXT)
+	@p='nnet_test$(EXEEXT)'; \
+	b='nnet_test'; \
 	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \

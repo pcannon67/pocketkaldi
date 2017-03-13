@@ -20,7 +20,11 @@
 
 #define HAVE_ATLAS 1
 
+#include <assert.h>
+#include <math.h>
+#include "itf/decodable-itf.h"
 #include "base/kaldi-common.h"
+#include "hmm/transition-model.h"
 #include "util/common-utils.h"
 #include "nnet2/decodable-am-nnet.h"
 #include "tree/context-dep.h"
@@ -31,7 +35,86 @@
 #include "fst.h"
 #include "util.h"
 #include "decoder.h"
+#include "matrix.h"
+#include "cmvn.h"
+#include "util.h"
+#include "transition.h"
 
+
+namespace kaldi {
+namespace nnet2 {
+
+/// DecodableAmNnet is a decodable object that decodes
+/// with a neural net acoustic model of type AmNnet.
+class PkDecodableAmNnet: public DecodableInterface {
+ public:
+  PkDecodableAmNnet(const std::string &id2pdf_filename,
+                    const AmNnet &am_nnet,
+                    const CuMatrixBase<BaseFloat> &feats,
+                    bool pad_input = true, // if !pad_input, the NumIndices()
+                                           // will be < feats.NumRows().
+                    BaseFloat prob_scale = 1.0) {
+    // Note: we could make this more memory-efficient by doing the
+    // computation in smaller chunks than the whole utterance, and not
+    // storing the whole thing.  We'll leave this for later.
+    int32 num_rows = feats.NumRows() -
+        (pad_input ? 0 : am_nnet.GetNnet().LeftContext() +
+                         am_nnet.GetNnet().RightContext());
+    if (num_rows <= 0) {
+      KALDI_WARN << "Input with " << feats.NumRows()  << " rows will produce "
+                 << "empty output.";
+      return;
+    }
+    pk_status_t status;
+    pk_status_init(&status);
+    pk_readable_t *fd = pk_readable_open(id2pdf_filename.c_str(), &status);
+    pk_transition_init(&trans_model_, fd, &status);
+    pk_readable_close(fd);
+    CuMatrix<BaseFloat> log_probs(num_rows, trans_model_.num_pdfs);
+    // the following function is declared in nnet-compute.h
+    NnetComputation(am_nnet.GetNnet(), feats, pad_input, &log_probs);
+    log_probs.ApplyFloor(1.0e-20); // Avoid log of zero which leads to NaN.
+    log_probs.ApplyLog();
+    CuVector<BaseFloat> priors(am_nnet.Priors());
+    KALDI_ASSERT(priors.Dim() == trans_model_.num_pdfs &&
+                 "Priors in neural network not set up.");
+    priors.ApplyLog();
+    // subtract log-prior (divide by prior)
+    log_probs.AddVecToRows(-1.0, priors);
+    // apply probability scale.
+    log_probs.Scale(prob_scale);
+    // Transfer the log-probs to the CPU for faster access by the
+    // decoding process.
+    log_probs_.Swap(&log_probs);
+  }
+
+  // Note, frames are numbered from zero.  But transition_id is numbered
+  // from one (this routine is called by FSTs).
+  virtual BaseFloat LogLikelihood(int32 frame, int32 transition_id) {
+    return log_probs_(frame,
+                      pk_transition_tid2pdf(&trans_model_, transition_id));
+  }
+
+  virtual int32 NumFramesReady() const { return log_probs_.NumRows(); }
+  
+  // Indices are one-based!  This is for compatibility with OpenFst.
+  virtual int32 NumIndices() const { return trans_model_.num_transition_ids; }
+  
+  virtual bool IsLastFrame(int32 frame) const {
+    KALDI_ASSERT(frame < NumFramesReady());
+    return (frame == NumFramesReady() - 1);
+  }
+
+ protected:
+  pk_transition_t trans_model_;
+  Matrix<BaseFloat> log_probs_; // actually not really probabilities, since we divide
+  // by the prior -> they won't sum to one.
+
+  KALDI_DISALLOW_COPY_AND_ASSIGN(PkDecodableAmNnet);
+};
+
+}
+}
 
 int main(int argc, char *argv[]) {
   try {
@@ -57,14 +140,15 @@ int main(int argc, char *argv[]) {
     BaseFloat acoustic_scale = 0.1;
 
     std::string word_syms_filename;
+    std::string cmvn_stats_filename;
     BaseFloat beam = 16.0;
     po.Register("beam", &beam, "Decoding log-likelihood beam");
     po.Register("acoustic-scale", &acoustic_scale,
                 "Scaling factor for acoustic likelihoods");
     po.Register("word-symbol-table", &word_syms_filename,
                 "Symbol table for words [for debug output]");
-    po.Register("allow-partial", &allow_partial,
-                "Produce output even when final state was not reached");
+    po.Register("cmvn-stats", &cmvn_stats_filename,
+                "Vecotr of cmvn stats");
     po.Read(argc, argv);
 
     if (po.NumArgs() < 4 || po.NumArgs() > 6) {
@@ -76,8 +160,7 @@ int main(int argc, char *argv[]) {
         fst_in_filename = po.GetArg(2),
         feature_rspecifier = po.GetArg(3),
         words_wspecifier = po.GetArg(4),
-        alignment_wspecifier = po.GetOptArg(5),
-        lattice_wspecifier = po.GetOptArg(6);
+        transition_in_filename = po.GetOptArg(5);
 
     TransitionModel trans_model;
     AmNnet am_nnet;
@@ -99,11 +182,6 @@ int main(int argc, char *argv[]) {
     }
 
     Int32VectorWriter words_writer(words_wspecifier);
-
-    Int32VectorWriter alignment_writer(alignment_wspecifier);
-
-    CompactLatticeWriter clat_writer(lattice_wspecifier);
-
     fst::SymbolTable *word_syms = NULL;
     if (word_syms_filename != "") 
       if (!(word_syms = fst::SymbolTable::ReadText(word_syms_filename)))
@@ -117,9 +195,52 @@ int main(int argc, char *argv[]) {
     int num_success = 0, num_fail = 0;
     PkSimpleDecoder decoder(&fst, beam);
 
+    // Read CMVN stats
+    pk_readable_t *fdcmvn = pk_readable_open(
+        cmvn_stats_filename.c_str(),
+        &status);
+    assert(status.ok);
+
+    pk_vector_t cmvn_stats;
+    pk_vector_init(&cmvn_stats, 0, NAN);
+    pk_vector_read(&cmvn_stats, fdcmvn, &status);
+    assert(status.ok);
+
+    pk_readable_close(fdcmvn);
+
     for (; !feature_reader.Done(); feature_reader.Next()) {
       std::string utt = feature_reader.Key();
-      const CuMatrix<BaseFloat> features(feature_reader.Value());
+      Matrix<BaseFloat> feature_in(feature_reader.Value());
+
+      // Copy matrix feature to raw_feats
+      int nrow = feature_in.NumCols();
+      int ncol = feature_in.NumRows();
+      pk_matrix_t raw_feats;
+      pk_matrix_init(&raw_feats, nrow, ncol);
+      for (int frame = 0; frame < ncol; ++frame) {
+        pk_vector_t col = pk_matrix_getcol(&raw_feats, frame);
+        for (int d = 0; d < col.dim; ++d) {
+          col.data[d] = feature_in(frame, d);
+        }
+      }
+
+      // Apply CMVN on raw_feats
+      pk_cmvn_t cmvn;
+      pk_cmvn_init(&cmvn, &cmvn_stats, &raw_feats);
+      pk_vector_t frame_feats;
+      pk_vector_init(&frame_feats, 0, NAN);
+      CuMatrix<BaseFloat> features(raw_feats.ncol, raw_feats.nrow);
+      for (int frame = 0; frame < raw_feats.ncol; ++frame) {
+        pk_cmvn_getframe(&cmvn, frame, &frame_feats);
+        for (int d = 0; d < frame_feats.dim; ++d) {
+          features(frame, d) = frame_feats.data[d];
+        }
+      }
+
+      pk_matrix_destroy(&raw_feats);
+      pk_vector_destroy(&frame_feats);
+      pk_cmvn_destroy(&cmvn);
+
       feature_reader.FreeCurrent();
       if (features.NumRows() == 0) {
         KALDI_WARN << "Zero-length utterance: " << utt;
@@ -128,11 +249,11 @@ int main(int argc, char *argv[]) {
       }
 
       bool pad_input = true;
-      DecodableAmNnet nnet_decodable(trans_model,
-                                     am_nnet,
-                                     features,
-                                     pad_input,
-                                     acoustic_scale);
+      PkDecodableAmNnet nnet_decodable(transition_in_filename,
+                                       am_nnet,
+                                       features,
+                                       pad_input,
+                                       acoustic_scale);
       decoder.Decode(&nnet_decodable);
 
       VectorFst<LatticeArc> decoded;  // linear FST.
@@ -156,8 +277,6 @@ int main(int argc, char *argv[]) {
 
         frame_count += features.NumRows();
         words_writer.Write(utt, words);
-        if (alignment_wspecifier != "")
-          alignment_writer.Write(utt, alignment);
         if (word_syms != NULL) {
           std::cerr << utt << ' ';
           for (size_t i = 0; i < words.size(); i++) {

@@ -28,6 +28,9 @@
 #include <stdio.h>
 #include <math.h>
 
+
+
+
 void pk_decoder_result_destroy(pk_decoder_result_t *best_path) {
   best_path->alignment_size = 0;
   pk_free(best_path->alignment);

@@ -20,14 +20,27 @@ void pk_matrix_init(pk_matrix_t *self, int nrow, int ncol) {
 }
 
 void pk_matrix_resize(pk_matrix_t *self, int nrow, int ncol) {
+  int self_totalelem = self->nrow * self->ncol;
+  int total_elem = nrow * ncol;
   self->nrow = nrow;
   self->ncol = ncol;
-  int total_elems = nrow * ncol;
-  if (total_elems > 0) {
-    self->data = (float *)pk_realloc(self->data, sizeof(float) * total_elems);
+  if (self_totalelem == total_elem) {
+    return;
+  } else if (total_elem > 0) {
+    self->data = (float *)pk_realloc(self->data, sizeof(float) * total_elem);
   } else {
     free(self->data);
     self->data = NULL;
+  }
+}
+
+void pk_matrix_copy(pk_matrix_t *dest, const pk_matrix_t *src) {
+  if (dest->nrow != src->nrow || dest->ncol != src->ncol) {
+    pk_matrix_resize(dest, src->nrow, src->ncol);
+  }
+
+  for (int i = 0; i < src->nrow * src->ncol; ++i) {
+    dest->data[i] = src->data[i];
   }
 }
 
@@ -95,6 +108,24 @@ float pk_vector_dot(const pk_vector_t *self, const pk_vector_t *vec) {
     sum += self->data[i] * vec->data[i];
   }
   return sum;
+}
+
+float pk_vector_dotmat(
+    const pk_vector_t *self, 
+    const pk_matrix_t *W,
+    pk_vector_t *out) {
+  assert(self->dim == W->nrow && "pk_vector_dotmat: x and W size mismatch");
+  
+  int nrow = W->nrow;
+  int ncol = W->ncol;
+  pk_vector_resize(out, ncol);
+  for (int c = 0; c < ncol; ++c) {
+    float sum = 0.0f;
+    for (int d = 0; d < nrow; ++d) {
+      sum += self->data[d] * W->data[c * nrow + d];
+    }
+    out->data[c] = sum;
+  }
 }
 
 void pk_vector_add(const pk_vector_t *self, const pk_vector_t *vec) {

@@ -34,6 +34,10 @@ void pk_matrix_fill(pk_matrix_t *self, float val);
 POCKETKALDI_EXPORT
 void pk_matrix_resize(pk_matrix_t *self, int nrow, int ncol);
 
+// Copy the matrix from src to dest
+POCKETKALDI_EXPORT
+void pk_matrix_copy(pk_matrix_t *dest, const pk_matrix_t *src);
+
 // Destroy the matrix
 POCKETKALDI_EXPORT
 void pk_matrix_destroy(pk_matrix_t *self);
@@ -72,6 +76,13 @@ void pk_vector_copy(pk_vector_t *dest, const pk_vector_t *src);
 // Calculates the dot product of self and vec
 POCKETKALDI_EXPORT
 float pk_vector_dot(const pk_vector_t *self, const pk_vector_t *vec);
+
+// Calculate (self^T dot W)^T, snd stores the output into out
+POCKETKALDI_EXPORT
+float pk_vector_dotmat(
+    const pk_vector_t *self, 
+    const pk_matrix_t *W,
+    pk_vector_t *out);
 
 // Add vec to self
 POCKETKALDI_EXPORT

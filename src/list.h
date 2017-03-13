@@ -8,6 +8,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include "util.h"
 
 #define PKLIST_INITIALSIZE 16;
@@ -60,6 +61,6 @@
                                                                                \
     static inline bool name##_empty(name##_t *self) {                          \
       return self->size == 0;                                                  \
-    }                                                                          
+    }
 
 #endif  // POCKETKALDI_LIST_H_
