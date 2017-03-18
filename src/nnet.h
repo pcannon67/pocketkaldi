@@ -56,4 +56,37 @@ void pk_nnet_layer_linear_propagate(
     const pk_vector_t *in,
     pk_vector_t *out);
 
+// Initialize the softmax layer
+POCKETKALDI_EXPORT
+pk_nnet_layer_t *pk_nnet_layer_softmax_init(pk_nnet_layer_softmax_t *self);
+
+// Propagate through the softmax layer
+POCKETKALDI_EXPORT
+void pk_nnet_layer_softmax_propagate(
+    const pk_nnet_layer_t *,
+    const pk_vector_t *in,
+    pk_vector_t *out);
+
+// Initialize the ReLU layer
+POCKETKALDI_EXPORT
+pk_nnet_layer_t *pk_nnet_layer_relu_init(pk_nnet_layer_relu_t *self);
+
+// Propagate through the ReLU layer
+POCKETKALDI_EXPORT
+void pk_nnet_layer_relu_propagate(
+    const pk_nnet_layer_t *,
+    const pk_vector_t *in,
+    pk_vector_t *out);
+
+// Initialize the Normalize layer
+POCKETKALDI_EXPORT
+pk_nnet_layer_t *pk_nnet_layer_normalize_init(pk_nnet_layer_normalize_t *self);
+
+// Propagate through the Normalize layer
+POCKETKALDI_EXPORT
+void pk_nnet_layer_normalize_propagate(
+    const pk_nnet_layer_t *,
+    const pk_vector_t *in,
+    pk_vector_t *out);
+
 #endif

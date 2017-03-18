@@ -40,4 +40,71 @@ pk_nnet_layer_t *pk_nnet_layer_linear_init(
   return (pk_nnet_layer_t *)self;
 }
 
+void pk_nnet_layer_softmax_propagate(
+    const pk_nnet_layer_t *self,
+    const pk_vector_t *in,
+    pk_vector_t *out) {
+  assert(self);  // self is an unused parameter
 
+  pk_vector_resize(out, in->dim);
+  float sum = 0.0f;
+  for (int i = 0; i < in->dim; ++i) {
+    float exp_d = expf(in->data[i]);
+    out->data[i] = exp_d;
+    sum += exp_d;
+  }
+  for (int i = 0; i < out->dim; ++i) {
+    out->data[i] /= sum;
+  }
+}
+
+pk_nnet_layer_t *pk_nnet_layer_softmax_init(pk_nnet_layer_softmax_t *self) {
+  self->base.destroy = NULL;
+  self->base.propagate = &pk_nnet_layer_softmax_propagate;
+
+  return (pk_nnet_layer_t *)self;
+}
+
+void pk_nnet_layer_relu_propagate(
+    const pk_nnet_layer_t *self,
+    const pk_vector_t *in,
+    pk_vector_t *out) {
+  assert(self);  // self is an unused parameter
+
+  pk_vector_resize(out, in->dim);
+  float sum = 0.0f;
+  for (int i = 0; i < in->dim; ++i) {
+    out->data[i] = in->data[i] > 0.0f ? in->data[i] : 0.0f;
+  }
+}
+
+pk_nnet_layer_t *pk_nnet_layer_relu_init(pk_nnet_layer_relu_t *self) {
+  self->base.destroy = NULL;
+  self->base.propagate = &pk_nnet_layer_relu_propagate;
+
+  return (pk_nnet_layer_t *)self;
+}
+
+void pk_nnet_layer_normalize_propagate(
+    const pk_nnet_layer_t *self,
+    const pk_vector_t *in,
+    pk_vector_t *out) {
+  assert(self);  // self is an unused parameter
+
+  pk_vector_resize(out, in->dim);
+  double squared_sum = 0.0;
+  for (int i = 0; i < in->dim; ++i) {
+    squared_sum += in->data[i] * in->data[i];
+  }
+  float invstd = (float)(1.0 / sqrt(squared_sum));
+  for (int i = 0; i < in-> dim; ++i) {
+    out->data[i] = in->data[i] * invstd;
+  }
+}
+
+pk_nnet_layer_t *pk_nnet_layer_normalize_init(pk_nnet_layer_normalize_t *self) {
+  self->base.destroy = NULL;
+  self->base.propagate = &pk_nnet_layer_normalize_propagate;
+
+  return (pk_nnet_layer_t *)self;
+}
