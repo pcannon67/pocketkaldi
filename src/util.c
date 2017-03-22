@@ -119,7 +119,8 @@ int pk_readable_readsectionhead(
 
   // Read section header
   pk_bytebuffer_t section_header;
-  pk_bytebuffer_init(&section_header, 8);
+  pk_bytebuffer_init(&section_header);
+  pk_bytebuffer_reset(&section_header, 8);
   pk_readable_readbuffer(self, &section_header, status);
 
   // Check section name
@@ -147,7 +148,14 @@ int pk_readable_readsectionhead(
 }
 
 
-void pk_bytebuffer_init(pk_bytebuffer_t *self, int64_t size) {
+void pk_bytebuffer_init(pk_bytebuffer_t *self) {
+  self->buffer = NULL;
+  self->size = 0;
+  self->current_position = 0;
+}
+
+void pk_bytebuffer_reset(pk_bytebuffer_t *self, int64_t size) {
+  free(self->buffer);
   self->buffer = (char *)malloc(sizeof(char) * size);
   self->size = size;
   self->current_position = 0;

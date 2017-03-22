@@ -37,6 +37,7 @@
 #include "decoder.h"
 #include "matrix.h"
 #include "cmvn.h"
+#include "am.h"
 #include "util.h"
 #include "transition.h"
 
@@ -49,54 +50,41 @@ namespace nnet2 {
 class PkDecodableAmNnet: public DecodableInterface {
  public:
   PkDecodableAmNnet(const std::string &id2pdf_filename,
-                    const AmNnet &am_nnet,
-                    const CuMatrixBase<BaseFloat> &feats,
+                    const pk_am_t *am,
+                    pk_matrix_t *feats,
                     bool pad_input = true, // if !pad_input, the NumIndices()
                                            // will be < feats.NumRows().
                     BaseFloat prob_scale = 1.0) {
-    // Note: we could make this more memory-efficient by doing the
-    // computation in smaller chunks than the whole utterance, and not
-    // storing the whole thing.  We'll leave this for later.
-    int32 num_rows = feats.NumRows() -
-        (pad_input ? 0 : am_nnet.GetNnet().LeftContext() +
-                         am_nnet.GetNnet().RightContext());
-    if (num_rows <= 0) {
-      KALDI_WARN << "Input with " << feats.NumRows()  << " rows will produce "
-                 << "empty output.";
-      return;
-    }
     pk_status_t status;
     pk_status_init(&status);
     pk_readable_t *fd = pk_readable_open(id2pdf_filename.c_str(), &status);
     pk_transition_init(&trans_model_, fd, &status);
     pk_readable_close(fd);
-    CuMatrix<BaseFloat> log_probs(num_rows, trans_model_.num_pdfs);
-    // the following function is declared in nnet-compute.h
-    NnetComputation(am_nnet.GetNnet(), feats, pad_input, &log_probs);
-    log_probs.ApplyFloor(1.0e-20); // Avoid log of zero which leads to NaN.
-    log_probs.ApplyLog();
-    CuVector<BaseFloat> priors(am_nnet.Priors());
-    KALDI_ASSERT(priors.Dim() == trans_model_.num_pdfs &&
-                 "Priors in neural network not set up.");
-    priors.ApplyLog();
-    // subtract log-prior (divide by prior)
-    log_probs.AddVecToRows(-1.0, priors);
-    // apply probability scale.
-    log_probs.Scale(prob_scale);
-    // Transfer the log-probs to the CPU for faster access by the
-    // decoding process.
-    log_probs_.Swap(&log_probs);
+
+    pk_vector_t y;
+    pk_vector_t log_prior;
+    pk_vector_init(&y, 0, NAN);
+    pk_vector_init(&log_prior, 0, NAN);
+
+    pk_matrix_init(&log_prob_, trans_model_.num_pdfs, feats->ncol);
+    for (int frame = 0; frame < feats->ncol; ++frame) {
+      pk_am_compute(am, feats, frame, &y);
+      pk_vector_scale(&y, prob_scale);
+      for (int d = 0; d < y.dim; ++d) {
+        log_prob_.data[frame * log_prob_.nrow + d] = y.data[d];
+      }
+    }
   }
 
   // Note, frames are numbered from zero.  But transition_id is numbered
   // from one (this routine is called by FSTs).
   virtual BaseFloat LogLikelihood(int32 frame, int32 transition_id) {
-    float val = log_probs_(frame,
-                      pk_transition_tid2pdf(&trans_model_, transition_id));
+    int pdf_id = pk_transition_tid2pdf(&trans_model_, transition_id);
+    float val = log_prob_.data[frame * log_prob_.nrow + pdf_id];
     return val;
   }
 
-  virtual int32 NumFramesReady() const { return log_probs_.NumRows(); }
+  virtual int32 NumFramesReady() const { return log_prob_.ncol; }
   
   // Indices are one-based!  This is for compatibility with OpenFst.
   virtual int32 NumIndices() const { return trans_model_.num_transition_ids; }
@@ -108,8 +96,7 @@ class PkDecodableAmNnet: public DecodableInterface {
 
  protected:
   pk_transition_t trans_model_;
-  Matrix<BaseFloat> log_probs_; // actually not really probabilities, since we divide
-  // by the prior -> they won't sum to one.
+  pk_matrix_t log_prob_; 
 
   KALDI_DISALLOW_COPY_AND_ASSIGN(PkDecodableAmNnet);
 };
@@ -157,23 +144,21 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
 
-    std::string model_in_filename = po.GetArg(1),
+    std::string am_filename = po.GetArg(1),
         fst_in_filename = po.GetArg(2),
         feature_rspecifier = po.GetArg(3),
         words_wspecifier = po.GetArg(4),
         transition_in_filename = po.GetOptArg(5);
 
-    TransitionModel trans_model;
-    AmNnet am_nnet;
-    {
-      bool binary;
-      Input ki(model_in_filename, &binary);
-      trans_model.Read(ki.Stream(), binary);
-      am_nnet.Read(ki.Stream(), binary);
-    }
-
     pk_fst_t fst;
     pk_status_t status;
+
+    pk_am_t am;
+    pk_am_init(&am);
+    pk_readable_t *fd_am = pk_readable_open(am_filename.c_str(), &status);
+    assert(status.ok);
+    pk_am_read(&am, fd_am, &status);
+    assert(status.ok);
 
     pk_status_init(&status);
     pk_fst_read(&fst, fst_in_filename.c_str(), &status);
@@ -230,11 +215,12 @@ int main(int argc, char *argv[]) {
       pk_cmvn_init(&cmvn, &cmvn_stats, &raw_feats);
       pk_vector_t frame_feats;
       pk_vector_init(&frame_feats, 0, NAN);
-      CuMatrix<BaseFloat> features(raw_feats.ncol, raw_feats.nrow);
+      pk_matrix_t feats;
+      pk_matrix_init(&feats, raw_feats.nrow, raw_feats.ncol);
       for (int frame = 0; frame < raw_feats.ncol; ++frame) {
         pk_cmvn_getframe(&cmvn, frame, &frame_feats);
         for (int d = 0; d < frame_feats.dim; ++d) {
-          features(frame, d) = frame_feats.data[d];
+          feats.data[frame * feats.nrow + d] = frame_feats.data[d];
         }
       }
 
@@ -243,16 +229,10 @@ int main(int argc, char *argv[]) {
       pk_cmvn_destroy(&cmvn);
 
       feature_reader.FreeCurrent();
-      if (features.NumRows() == 0) {
-        KALDI_WARN << "Zero-length utterance: " << utt;
-        num_fail++;
-        continue;
-      }
-
       bool pad_input = true;
       PkDecodableAmNnet nnet_decodable(transition_in_filename,
-                                       am_nnet,
-                                       features,
+                                       &am,
+                                       &feats,
                                        pad_input,
                                        acoustic_scale);
       decoder.Decode(&nnet_decodable);
@@ -276,7 +256,7 @@ int main(int argc, char *argv[]) {
         float weight = best_path.weight;
         pk_decoder_result_destroy(&best_path);
 
-        frame_count += features.NumRows();
+        frame_count += feats.ncol;
         words_writer.Write(utt, words);
         if (word_syms != NULL) {
           std::cerr << utt << ' ';
@@ -291,12 +271,12 @@ int main(int argc, char *argv[]) {
         BaseFloat like = -weight;
         tot_like += like;
         KALDI_LOG << "Log-like per frame for utterance " << utt << " is "
-                  << (like / features.NumRows()) << " over "
-                  << features.NumRows() << " frames.";
+                  << (like / feats.ncol) << " over "
+                  << feats.ncol << " frames.";
       } else {
         num_fail++;
         KALDI_WARN << "Did not successfully decode utterance " << utt
-                   << ", len = " << features.NumRows();
+                   << ", len = " << feats.ncol;
       }
     }
 

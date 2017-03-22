@@ -4,6 +4,18 @@
 #define POCKETKALDI_NNET_H_
 
 #include "matrix.h"
+#include "util.h"
+
+#define PK_NNET_SECTION "NNT0"
+#define PK_NNET_LAYER_SECTION "LAY0"
+
+// Layer types
+#define PK_NNET_LINEAR_LAYER 0
+#define PK_NNET_RELU_LAYER 1
+#define PK_NNET_NORMALIZE_LAYER 2
+#define PK_NNET_SOFTMAX_LAYER 3
+#define PK_NNET_ADD_LAYER 4
+#define PK_NNET_MUL_LAYER 5
 
 typedef struct pk_nnet_layer_t {
   void (*propagate)(
@@ -30,10 +42,22 @@ typedef struct pk_nnet_layer_relu_t {
   pk_nnet_layer_t base;
 } pk_nnet_layer_relu_t;
 
-// Normalize layer: ensure root-mean-square equals 1.0
+// Normalize layer: ensure y * y^T == D
 typedef struct pk_nnet_layer_normalize_t {
   pk_nnet_layer_t base;
 } pk_nnet_layer_normalize_t;
+
+// Add layer: x + scale * b
+typedef struct pk_nnet_layer_add_t {
+  pk_nnet_layer_t base;
+  float scale;
+  pk_vector_t b;
+} pk_nnet_layer_add_t;
+
+typedef struct pk_nnet_t {
+  pk_nnet_layer_t **layers;
+  int num_layers;
+} pk_nnet_t;
 
 // Initialize the linear layer with parameter W and b. It just copies the values
 // from W and b. Then return a pointer of pk_nnet_layer_t, which points to the
@@ -88,5 +112,42 @@ void pk_nnet_layer_normalize_propagate(
     const pk_nnet_layer_t *,
     const pk_vector_t *in,
     pk_vector_t *out);
+
+// Initialize the Add layer. It just copy from vector b, not own it.
+POCKETKALDI_EXPORT
+pk_nnet_layer_t *pk_nnet_layer_add_init(
+    pk_nnet_layer_add_t *self,
+    float scale,
+    const pk_vector_t *b);
+
+// Propagate through the Add layer
+POCKETKALDI_EXPORT
+void pk_nnet_layer_add_propagate(
+    const pk_nnet_layer_t *,
+    const pk_vector_t *in,
+    pk_vector_t *out);
+
+// Destroy the add layer. It just destroys b, and doesn't free the pointer self
+POCKETKALDI_EXPORT
+void pk_nnet_layer_add_destroy(pk_nnet_layer_t *self);
+
+// Initialize the neural network
+POCKETKALDI_EXPORT
+void pk_nnet_init(pk_nnet_t *self);
+
+// Read the neural network from fd. If failed, status->ok == false
+POCKETKALDI_EXPORT
+void pk_nnet_read(pk_nnet_t *self, pk_readable_t *fd, pk_status_t *status);
+
+// Propagate through the netral network
+POCKETKALDI_EXPORT
+void pk_nnet_propagate(
+    const pk_nnet_t *self,
+    const pk_vector_t *in,
+    pk_vector_t *out);
+
+// Destroy the nnet
+POCKETKALDI_EXPORT
+void pk_nnet_destroy(pk_nnet_t *self);
 
 #endif

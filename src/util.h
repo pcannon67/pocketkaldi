@@ -3,6 +3,7 @@
 #ifndef POCKETKALDI_UTIL_H_
 #define POCKETKALDI_UTIL_H_
 
+#include <assert.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -16,6 +17,7 @@
 #define PK_STATUS_STCORRUPTED 2
 
 #define PK_WARN fprintf
+#define PK_UNUSED(x) (void)(x)
 
 #define PK_PATHMAX 1024
 
@@ -104,11 +106,15 @@ int pk_readable_readsectionhead(
     const char *expected_section,
     pk_status_t *status);
 
-// Initialize the bytebuffer allocate `size` bytes 
+// Initialize the bytebuffer 
 POCKETKALDI_EXPORT
-void pk_bytebuffer_init(pk_bytebuffer_t *self, int64_t size);
+void pk_bytebuffer_init(pk_bytebuffer_t *self);
 
-// Destroy the bytebuffer allocate `size` bytes 
+// Reset the bytebuffer, allocate `size` bytes
+POCKETKALDI_EXPORT
+void pk_bytebuffer_reset(pk_bytebuffer_t *self, int64_t size);
+
+// Destroy the bytebuffer  
 POCKETKALDI_EXPORT
 void pk_bytebuffer_destroy(pk_bytebuffer_t *self);
 

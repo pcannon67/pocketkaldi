@@ -8,6 +8,7 @@
 #include "util.h"
 
 #define PK_VECTOR_SECTION "VEC0"
+#define PK_MATRIX_SECTION "MAT0"
 
 // pk_matrix_t is a column-major matrix type in pocketkaldi
 typedef struct pk_matrix_t {
@@ -25,6 +26,10 @@ typedef struct pk_vector_t {
 // Initialize the matrix with specified rows and columns
 POCKETKALDI_EXPORT
 void pk_matrix_init(pk_matrix_t *self, int nrow, int ncol);
+
+// Read matrix from fd. When any error occured, it will set status->ok to false
+POCKETKALDI_EXPORT
+void pk_matrix_read(pk_matrix_t *self, pk_readable_t *fd, pk_status_t *status);
 
 // Fill the matrix with value
 POCKETKALDI_EXPORT
@@ -73,6 +78,18 @@ void pk_vector_copyfrom(pk_vector_t *self, const float *source, int n);
 POCKETKALDI_EXPORT
 void pk_vector_copy(pk_vector_t *dest, const pk_vector_t *src);
 
+// Apply floor to the vector
+POCKETKALDI_EXPORT
+void pk_vector_floor(pk_vector_t *self, float floor);
+
+// Apply log to the vector
+POCKETKALDI_EXPORT
+void pk_vector_log(pk_vector_t *self);
+
+// Apply scale to the vector
+POCKETKALDI_EXPORT
+void pk_vector_scale(pk_vector_t *self, float scale);
+
 // Calculates the dot product of self and vec
 POCKETKALDI_EXPORT
 float pk_vector_dot(const pk_vector_t *self, const pk_vector_t *vec);
@@ -87,6 +104,13 @@ float pk_vector_dotmat(
 // Add vec to self
 POCKETKALDI_EXPORT
 void pk_vector_add(const pk_vector_t *self, const pk_vector_t *vec);
+
+// Add scale * vec to self
+POCKETKALDI_EXPORT
+void pk_vector_addscale(
+    const pk_vector_t *self,
+    float scale,
+    const pk_vector_t *vec);
 
 // Add scalar * vec to self
 POCKETKALDI_EXPORT

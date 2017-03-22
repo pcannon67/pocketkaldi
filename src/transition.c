@@ -12,7 +12,8 @@ void pk_transition_init(
       PK_TRANSITION_SECTION,
       status);
   pk_bytebuffer_t bytebuffer;
-  pk_bytebuffer_init(&bytebuffer, section_size);
+  pk_bytebuffer_init(&bytebuffer);
+  pk_bytebuffer_reset(&bytebuffer, section_size);
   if (status->ok) {
     if (section_size < 2 * sizeof(int32_t)) {
       PK_STATUS_CORRUPTED(status, "%s", fd->filename);
@@ -24,7 +25,7 @@ void pk_transition_init(
   int32_t num_transtion = 0;
   int32_t num_pdf = 0;
   if (status->ok) {
-  	num_pdf = pk_bytebuffer_readint32(&bytebuffer);
+    num_pdf = pk_bytebuffer_readint32(&bytebuffer);
     num_transtion = pk_bytebuffer_readint32(&bytebuffer);
     int expected_sectionsize = (num_transtion + 3) * sizeof(int32_t);
     if (section_size != expected_sectionsize) {

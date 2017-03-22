@@ -4,8 +4,9 @@ AM_CFLAGS = -std=c99
 AM_CXXFLAGS = -I$(top_srcdir)/../kaldi/src -I$(top_srcdir)/../kaldi/tools/openfst/src/include/ -I$(top_srcdir)/../kaldi/tools/ATLAS/include/ -I$(top_srcdir)/src -g -fPIC -std=c++11
 AM_LDFLAGS = -pthread -ldl -L/usr/local/cuda-8.0/lib64/
 
-bin_PROGRAMS = main
-main_SOURCES = src/main.cc 
+bin_PROGRAMS = main main2
+main_SOURCES = src/main.cc
+main2_SOURCES = src/main2.cc 
 
 lib_LIBRARIES = libpocketkaldi.a
 libpocketkaldi_a_SOURCES = src/hashlist.c \
@@ -19,9 +20,33 @@ libpocketkaldi_a_SOURCES = src/hashlist.c \
                            src/strlcpy.c \
                            src/cmvn.c \
                            src/transition.c \
-                           src/nnet.c
+                           src/nnet.c \
+                           src/am.c
 
 main_LDADD = $(KALDI_ROOT)/src/decoder/kaldi-decoder.a \
+              $(KALDI_ROOT)/src/lat/kaldi-lat.a \
+              $(KALDI_ROOT)/src/fstext/kaldi-fstext.a \
+              $(KALDI_ROOT)/src/hmm/kaldi-hmm.a \
+              $(KALDI_ROOT)/src/nnet2/kaldi-nnet2.a \
+              $(KALDI_ROOT)/src/feat/kaldi-feat.a \
+              $(KALDI_ROOT)/src/transform/kaldi-transform.a \
+              $(KALDI_ROOT)/src/gmm/kaldi-gmm.a \
+              $(KALDI_ROOT)/src/tree/kaldi-tree.a \
+              $(KALDI_ROOT)/src/util/kaldi-util.a \
+              $(KALDI_ROOT)/src/thread/kaldi-thread.a \
+              $(KALDI_ROOT)/src/cudamatrix/kaldi-cudamatrix.a \
+              $(KALDI_ROOT)/src/matrix/kaldi-matrix.a \
+              $(KALDI_ROOT)/src/base/kaldi-base.a \
+              $(ATLASLIBS) \
+              $(KALDI_ROOT)/tools/openfst/lib/libfst.a \
+              libpocketkaldi.a \
+              -ldl \
+              -lcudart \
+              -lcuda \
+              -lcurand \
+              -lcublas
+
+main2_LDADD = $(KALDI_ROOT)/src/decoder/kaldi-decoder.a \
               $(KALDI_ROOT)/src/lat/kaldi-lat.a \
               $(KALDI_ROOT)/src/fstext/kaldi-fstext.a \
               $(KALDI_ROOT)/src/hmm/kaldi-hmm.a \

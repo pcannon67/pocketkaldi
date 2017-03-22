@@ -149,7 +149,7 @@ void TestNormalizeLayer() {
   for (int d = 0; d < y.dim; ++d) {
     sum += y.data[d] * y.data[d];
   }
-  assert(fabs(sum - 1.0) < 0.0001);
+  assert(fabs(sum - 4.0) < 0.0001);
 
   // Destory
   if (layer->destroy) layer->destroy(layer);

@@ -19,6 +19,60 @@ void pk_matrix_init(pk_matrix_t *self, int nrow, int ncol) {
   }
 }
 
+void pk_matrix_read(pk_matrix_t *self, pk_readable_t *fd, pk_status_t *status) {
+  pk_bytebuffer_t content;
+  pk_vector_t col_vec;
+  pk_bytebuffer_init(&content);
+  pk_vector_init(&col_vec, 0, NAN);
+
+  // Clear self first
+  pk_matrix_destroy(self);
+
+  int32_t section_size = pk_readable_readsectionhead(
+    fd,
+    PK_MATRIX_SECTION,
+    status);
+  if (!status->ok) goto pk_matrix_read_failed;
+  pk_bytebuffer_reset(&content, section_size);
+
+  // Read columns and rows
+  pk_readable_readbuffer(fd, &content, status);
+  if (!status->ok) goto pk_matrix_read_failed;
+  int num_col = pk_bytebuffer_readint32(&content);
+  int num_row = pk_bytebuffer_readint32(&content);
+
+  // Initialize the matrix
+  pk_matrix_destroy(self);
+  pk_matrix_init(self, num_row, num_col);
+
+  // Read each column vectors
+  for (int col_idx = 0; col_idx < num_col; ++col_idx) {
+    pk_vector_read(&col_vec, fd, status);
+    if (!status->ok) goto pk_matrix_read_failed;
+    if (col_vec.dim != num_row) {
+      PK_STATUS_CORRUPTED(
+          status,
+          "pk_matrix_read: col_vec.dim == %d expected, but %d found (%s)",
+          num_row,
+          col_vec.dim,
+          fd->filename);
+      goto pk_matrix_read_failed;
+    }
+
+    for (int d = 0; d < col_vec.dim; ++d) {
+      self->data[col_idx * num_row + d] = col_vec.data[d];
+    }
+  }
+
+  if (false) {
+pk_matrix_read_failed:
+    pk_matrix_destroy(self);
+  }
+
+  pk_bytebuffer_destroy(&content);
+  pk_vector_destroy(&col_vec);
+}
+
 void pk_matrix_resize(pk_matrix_t *self, int nrow, int ncol) {
   int self_totalelem = self->nrow * self->ncol;
   int total_elem = nrow * ncol;
@@ -100,6 +154,24 @@ void pk_vector_copy(pk_vector_t *dest, const pk_vector_t *src) {
   }
 }
 
+void pk_vector_floor(pk_vector_t *self, float floor) {
+  for (int i = 0; i < self->dim; ++i) {
+    if (self->data[i] < floor) self->data[i] = floor;
+  }
+}
+
+void pk_vector_log(pk_vector_t *self) {
+  for (int i = 0; i < self->dim; ++i) {
+    self->data[i] = logf(self->data[i]);
+  }
+}
+
+void pk_vector_scale(pk_vector_t *self, float scale) {
+  for (int i = 0; i < self->dim; ++i) {
+    self->data[i] = scale * self->data[i];
+  }
+}
+
 float pk_vector_dot(const pk_vector_t *self, const pk_vector_t *vec) {
   assert(self->dim == vec->dim && "pk_vector_dot: vector size mismatch");
 
@@ -133,6 +205,17 @@ void pk_vector_add(const pk_vector_t *self, const pk_vector_t *vec) {
 
   for (int i = 0; i < self->dim; ++i) {
     self->data[i] += vec->data[i];
+  }
+}
+
+void pk_vector_addscale(
+    const pk_vector_t *self,
+    float scale,
+    const pk_vector_t *vec) {
+  assert(self->dim == vec->dim && "pk_vector_add: vector size mismatch");
+
+  for (int i = 0; i < self->dim; ++i) {
+    self->data[i] += scale * vec->data[i];
   }
 }
 
@@ -212,7 +295,8 @@ void pk_vector_read(pk_vector_t *self, pk_readable_t *fd, pk_status_t *status) {
 
   // Read content
   pk_bytebuffer_t content;
-  pk_bytebuffer_init(&content, section_size);
+  pk_bytebuffer_init(&content);
+  pk_bytebuffer_reset(&content, section_size);
   if (status->ok) {
     pk_readable_readbuffer(fd, &content, status);
   }
