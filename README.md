@@ -1,2 +1,2 @@
 # pocketkaldi
-Move Kaldi to mobile devices
+Move Kaldi to mobile devices v0.1
