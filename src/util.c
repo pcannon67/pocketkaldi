@@ -6,6 +6,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdint.h>
 
 void pk_status_init(pk_status_t *status) {
   status->ok = true;
@@ -100,6 +101,18 @@ void pk_readable_read(
   }
 }
 
+int32_t pk_readable_readint32(pk_readable_t *self, pk_status_t *status) {
+  int32_t val = 0;;
+  pk_readable_read(self, (char *)&val, sizeof(int32_t), status);
+  return val;
+}
+
+float pk_readable_readfloat(pk_readable_t *self, pk_status_t *status) {
+  float val = 0.0f;
+  pk_readable_read(self, (char *)&val, sizeof(float), status);
+  return val;
+}
+
 void pk_readable_readbuffer(
     pk_readable_t *self,
     pk_bytebuffer_t *buffer,
@@ -109,6 +122,37 @@ void pk_readable_readbuffer(
 
   buffer->current_position = 0;
   pk_readable_read(self, buffer->buffer, bytes_to_read, status);
+}
+
+bool pk_readable_readline(
+    pk_readable_t *self,
+    char *buffer,
+    int buffer_size,
+    pk_status_t *status) {
+  // Failed if it already reached EOF
+  if (feof(self->fd)) {
+    PK_STATUS_IOERROR(status, "EOF already reached: %s", self->filename);
+    return false;
+  }
+
+  // Readline
+  char *s = fgets(buffer, buffer_size, self->fd);
+  if (s == NULL) {
+    if (feof(self->fd)) {
+      // First time that reached EOF
+      return false;
+    } else {
+      PK_STATUS_IOERROR(status, "%s", self->filename);
+      return false;
+    }
+  }
+
+  // Trim the tailing '\r' or '\n'
+  char *tail = buffer + strlen(buffer) - 1;
+  while ((*tail == '\r' || *tail == '\n') && tail >= buffer) {
+    *tail = '\0';
+    --tail;
+  }
 }
 
 int pk_readable_readsectionhead(

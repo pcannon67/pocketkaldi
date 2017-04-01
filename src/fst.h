@@ -7,6 +7,8 @@
 #include "util.h"
 #include "pocketkaldi.h"
 
+#define PK_FST_NOSTATEID -1
+
 typedef struct {
   int32_t next_state;
   int32_t input_label;
@@ -14,7 +16,7 @@ typedef struct {
   float weight;
 } pk_fst_arc_t;
 
-typedef struct {
+typedef struct pk_fst_t {
   int32_t start_state;
   int32_t state_number;
   int32_t arc_number;
@@ -31,6 +33,10 @@ typedef struct {
   const pk_fst_t *fst;
 } pk_fst_iter_t;
 
+// Initialize the struct
+POCKETKALDI_EXPORT
+void pk_fst_init(pk_fst_t *self);
+
 // Destroy it and free all memory
 POCKETKALDI_EXPORT
 void pk_fst_destroy(pk_fst_t *self);
@@ -40,7 +46,7 @@ void pk_fst_destroy(pk_fst_t *self);
 POCKETKALDI_EXPORT
 void pk_fst_read(
     pk_fst_t *self,
-    const char *filename,
+    pk_readable_t *fd,
     pk_status_t *status);
 
 // Itereate all outcoming arcs of state. It will initialize an `pk_fst_iter_t`

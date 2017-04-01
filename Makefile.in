@@ -77,14 +77,15 @@ POST_INSTALL = :
 NORMAL_UNINSTALL = :
 PRE_UNINSTALL = :
 POST_UNINSTALL = :
-bin_PROGRAMS = main$(EXEEXT) main2$(EXEEXT) $(am__EXEEXT_1)
+bin_PROGRAMS = pocketkaldi$(EXEEXT) $(am__EXEEXT_1)
 @ENABLE_TOOLS_TRUE@am__append_1 = compute_fbank extract_id2pdf
 TESTS = hashlist_test$(EXEEXT) list_test$(EXEEXT) fst_test$(EXEEXT) \
 	srfft_test$(EXEEXT) fbank_test$(EXEEXT) cmvn_test$(EXEEXT) \
-	nnet_test$(EXEEXT) $(am__append_2)
+	nnet_test$(EXEEXT) symbol_table_test$(EXEEXT) $(am__append_2)
 check_PROGRAMS = hashlist_test$(EXEEXT) list_test$(EXEEXT) \
 	fst_test$(EXEEXT) srfft_test$(EXEEXT) fbank_test$(EXEEXT) \
-	cmvn_test$(EXEEXT) nnet_test$(EXEEXT)
+	cmvn_test$(EXEEXT) nnet_test$(EXEEXT) \
+	symbol_table_test$(EXEEXT)
 @ENABLE_TOOLS_TRUE@am__append_2 = test/test_compute_fbank.sh
 subdir = .
 DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/Makefile.am \
@@ -147,7 +148,8 @@ am_libpocketkaldi_a_OBJECTS = src/hashlist.$(OBJEXT) \
 	src/pcm_reader.$(OBJEXT) src/decoder.$(OBJEXT) \
 	src/srfft.$(OBJEXT) src/fbank.$(OBJEXT) src/strlcpy.$(OBJEXT) \
 	src/cmvn.$(OBJEXT) src/transition.$(OBJEXT) src/nnet.$(OBJEXT) \
-	src/am.$(OBJEXT)
+	src/am.$(OBJEXT) src/vector.$(OBJEXT) src/decodable.$(OBJEXT) \
+	src/symbol_table.$(OBJEXT) src/pocketkaldi.$(OBJEXT)
 libpocketkaldi_a_OBJECTS = $(am_libpocketkaldi_a_OBJECTS)
 @ENABLE_TOOLS_TRUE@am__EXEEXT_1 = compute_fbank$(EXEEXT) \
 @ENABLE_TOOLS_TRUE@	extract_id2pdf$(EXEEXT)
@@ -199,50 +201,25 @@ list_test_OBJECTS = $(am_list_test_OBJECTS)
 list_test_DEPENDENCIES = libpocketkaldi.a
 list_test_LINK = $(CXXLD) $(list_test_CXXFLAGS) $(CXXFLAGS) \
 	$(AM_LDFLAGS) $(LDFLAGS) -o $@
-am_main_OBJECTS = src/main.$(OBJEXT)
-main_OBJECTS = $(am_main_OBJECTS)
-main_DEPENDENCIES = $(KALDI_ROOT)/src/decoder/kaldi-decoder.a \
-	$(KALDI_ROOT)/src/lat/kaldi-lat.a \
-	$(KALDI_ROOT)/src/fstext/kaldi-fstext.a \
-	$(KALDI_ROOT)/src/hmm/kaldi-hmm.a \
-	$(KALDI_ROOT)/src/nnet2/kaldi-nnet2.a \
-	$(KALDI_ROOT)/src/feat/kaldi-feat.a \
-	$(KALDI_ROOT)/src/transform/kaldi-transform.a \
-	$(KALDI_ROOT)/src/gmm/kaldi-gmm.a \
-	$(KALDI_ROOT)/src/tree/kaldi-tree.a \
-	$(KALDI_ROOT)/src/util/kaldi-util.a \
-	$(KALDI_ROOT)/src/thread/kaldi-thread.a \
-	$(KALDI_ROOT)/src/cudamatrix/kaldi-cudamatrix.a \
-	$(KALDI_ROOT)/src/matrix/kaldi-matrix.a \
-	$(KALDI_ROOT)/src/base/kaldi-base.a $(am__DEPENDENCIES_1) \
-	$(KALDI_ROOT)/tools/openfst/lib/libfst.a libpocketkaldi.a
-am_main2_OBJECTS = src/main2.$(OBJEXT)
-main2_OBJECTS = $(am_main2_OBJECTS)
-main2_DEPENDENCIES = $(KALDI_ROOT)/src/decoder/kaldi-decoder.a \
-	$(KALDI_ROOT)/src/lat/kaldi-lat.a \
-	$(KALDI_ROOT)/src/fstext/kaldi-fstext.a \
-	$(KALDI_ROOT)/src/hmm/kaldi-hmm.a \
-	$(KALDI_ROOT)/src/nnet2/kaldi-nnet2.a \
-	$(KALDI_ROOT)/src/feat/kaldi-feat.a \
-	$(KALDI_ROOT)/src/transform/kaldi-transform.a \
-	$(KALDI_ROOT)/src/gmm/kaldi-gmm.a \
-	$(KALDI_ROOT)/src/tree/kaldi-tree.a \
-	$(KALDI_ROOT)/src/util/kaldi-util.a \
-	$(KALDI_ROOT)/src/thread/kaldi-thread.a \
-	$(KALDI_ROOT)/src/cudamatrix/kaldi-cudamatrix.a \
-	$(KALDI_ROOT)/src/matrix/kaldi-matrix.a \
-	$(KALDI_ROOT)/src/base/kaldi-base.a $(am__DEPENDENCIES_1) \
-	$(KALDI_ROOT)/tools/openfst/lib/libfst.a libpocketkaldi.a
 am_nnet_test_OBJECTS = test/nnet_test-nnet_test.$(OBJEXT)
 nnet_test_OBJECTS = $(am_nnet_test_OBJECTS)
 nnet_test_DEPENDENCIES = libpocketkaldi.a
 nnet_test_LINK = $(CXXLD) $(nnet_test_CXXFLAGS) $(CXXFLAGS) \
 	$(AM_LDFLAGS) $(LDFLAGS) -o $@
+am_pocketkaldi_OBJECTS = src/main.$(OBJEXT)
+pocketkaldi_OBJECTS = $(am_pocketkaldi_OBJECTS)
+pocketkaldi_DEPENDENCIES = libpocketkaldi.a
 am_srfft_test_OBJECTS = test/srfft_test-srfft_test.$(OBJEXT)
 srfft_test_OBJECTS = $(am_srfft_test_OBJECTS)
 srfft_test_DEPENDENCIES = libpocketkaldi.a
 srfft_test_LINK = $(CXXLD) $(srfft_test_CXXFLAGS) $(CXXFLAGS) \
 	$(AM_LDFLAGS) $(LDFLAGS) -o $@
+am_symbol_table_test_OBJECTS =  \
+	test/symbol_table_test-symbol_table_test.$(OBJEXT)
+symbol_table_test_OBJECTS = $(am_symbol_table_test_OBJECTS)
+symbol_table_test_DEPENDENCIES = libpocketkaldi.a
+symbol_table_test_LINK = $(CXXLD) $(symbol_table_test_CXXFLAGS) \
+	$(CXXFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -291,14 +268,16 @@ am__v_CXXLD_1 =
 SOURCES = $(libpocketkaldi_a_SOURCES) $(cmvn_test_SOURCES) \
 	$(compute_fbank_SOURCES) $(extract_id2pdf_SOURCES) \
 	$(fbank_test_SOURCES) $(fst_test_SOURCES) \
-	$(hashlist_test_SOURCES) $(list_test_SOURCES) $(main_SOURCES) \
-	$(main2_SOURCES) $(nnet_test_SOURCES) $(srfft_test_SOURCES)
+	$(hashlist_test_SOURCES) $(list_test_SOURCES) \
+	$(nnet_test_SOURCES) $(pocketkaldi_SOURCES) \
+	$(srfft_test_SOURCES) $(symbol_table_test_SOURCES)
 DIST_SOURCES = $(libpocketkaldi_a_SOURCES) $(cmvn_test_SOURCES) \
 	$(am__compute_fbank_SOURCES_DIST) \
 	$(am__extract_id2pdf_SOURCES_DIST) $(fbank_test_SOURCES) \
 	$(fst_test_SOURCES) $(hashlist_test_SOURCES) \
-	$(list_test_SOURCES) $(main_SOURCES) $(main2_SOURCES) \
-	$(nnet_test_SOURCES) $(srfft_test_SOURCES)
+	$(list_test_SOURCES) $(nnet_test_SOURCES) \
+	$(pocketkaldi_SOURCES) $(srfft_test_SOURCES) \
+	$(symbol_table_test_SOURCES)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -614,69 +593,27 @@ AUTOMAKE_OPTIONS = gnu subdir-objects foreign
 AM_CFLAGS = -std=c99
 AM_CXXFLAGS = -I$(top_srcdir)/../kaldi/src -I$(top_srcdir)/../kaldi/tools/openfst/src/include/ -I$(top_srcdir)/../kaldi/tools/ATLAS/include/ -I$(top_srcdir)/src -g -fPIC -std=c++11
 AM_LDFLAGS = -pthread -ldl -L/usr/local/cuda-8.0/lib64/
-main_SOURCES = src/main.cc
-main2_SOURCES = src/main2.cc 
+pocketkaldi_SOURCES = src/main.c 
 lib_LIBRARIES = libpocketkaldi.a
 libpocketkaldi_a_SOURCES = src/hashlist.c \
                            src/util.c \
                            src/fst.c \
                            src/matrix.c \
                            src/pcm_reader.c \
-                           src/decoder.cc \
+                           src/decoder.c \
                            src/srfft.c \
                            src/fbank.c \
                            src/strlcpy.c \
                            src/cmvn.c \
                            src/transition.c \
                            src/nnet.c \
-                           src/am.c
+                           src/am.c \
+                           src/vector.c \
+                           src/decodable.c \
+                           src/symbol_table.c \
+                           src/pocketkaldi.c
 
-main_LDADD = $(KALDI_ROOT)/src/decoder/kaldi-decoder.a \
-              $(KALDI_ROOT)/src/lat/kaldi-lat.a \
-              $(KALDI_ROOT)/src/fstext/kaldi-fstext.a \
-              $(KALDI_ROOT)/src/hmm/kaldi-hmm.a \
-              $(KALDI_ROOT)/src/nnet2/kaldi-nnet2.a \
-              $(KALDI_ROOT)/src/feat/kaldi-feat.a \
-              $(KALDI_ROOT)/src/transform/kaldi-transform.a \
-              $(KALDI_ROOT)/src/gmm/kaldi-gmm.a \
-              $(KALDI_ROOT)/src/tree/kaldi-tree.a \
-              $(KALDI_ROOT)/src/util/kaldi-util.a \
-              $(KALDI_ROOT)/src/thread/kaldi-thread.a \
-              $(KALDI_ROOT)/src/cudamatrix/kaldi-cudamatrix.a \
-              $(KALDI_ROOT)/src/matrix/kaldi-matrix.a \
-              $(KALDI_ROOT)/src/base/kaldi-base.a \
-              $(ATLASLIBS) \
-              $(KALDI_ROOT)/tools/openfst/lib/libfst.a \
-              libpocketkaldi.a \
-              -ldl \
-              -lcudart \
-              -lcuda \
-              -lcurand \
-              -lcublas
-
-main2_LDADD = $(KALDI_ROOT)/src/decoder/kaldi-decoder.a \
-              $(KALDI_ROOT)/src/lat/kaldi-lat.a \
-              $(KALDI_ROOT)/src/fstext/kaldi-fstext.a \
-              $(KALDI_ROOT)/src/hmm/kaldi-hmm.a \
-              $(KALDI_ROOT)/src/nnet2/kaldi-nnet2.a \
-              $(KALDI_ROOT)/src/feat/kaldi-feat.a \
-              $(KALDI_ROOT)/src/transform/kaldi-transform.a \
-              $(KALDI_ROOT)/src/gmm/kaldi-gmm.a \
-              $(KALDI_ROOT)/src/tree/kaldi-tree.a \
-              $(KALDI_ROOT)/src/util/kaldi-util.a \
-              $(KALDI_ROOT)/src/thread/kaldi-thread.a \
-              $(KALDI_ROOT)/src/cudamatrix/kaldi-cudamatrix.a \
-              $(KALDI_ROOT)/src/matrix/kaldi-matrix.a \
-              $(KALDI_ROOT)/src/base/kaldi-base.a \
-              $(ATLASLIBS) \
-              $(KALDI_ROOT)/tools/openfst/lib/libfst.a \
-              libpocketkaldi.a \
-              -ldl \
-              -lcudart \
-              -lcuda \
-              -lcurand \
-              -lcublas
-
+pocketkaldi_LDADD = libpocketkaldi.a -lm
 @ENABLE_TOOLS_TRUE@compute_fbank_SOURCES = tool/compute_fbank.cc
 @ENABLE_TOOLS_TRUE@compute_fbank_LDADD = $(KALDI_ROOT)/src/util/kaldi-util.a \
 @ENABLE_TOOLS_TRUE@                          $(KALDI_ROOT)/src/thread/kaldi-thread.a \
@@ -703,6 +640,9 @@ list_test_LDADD = libpocketkaldi.a
 fst_test_SOURCES = test/fst_test.cc
 fst_test_CXXFLAGS = $(AM_CXXFLAGS) -std=c++11 -I$(top_srcdir)/src -DTESTDIR=\"$(top_srcdir)/test/\"
 fst_test_LDADD = libpocketkaldi.a
+symbol_table_test_SOURCES = test/symbol_table_test.cc
+symbol_table_test_CXXFLAGS = $(AM_CXXFLAGS) -std=c++11 -I$(top_srcdir)/src -DTESTDIR=\"$(top_srcdir)/test/\"
+symbol_table_test_LDADD = libpocketkaldi.a
 srfft_test_SOURCES = test/srfft_test.cc
 srfft_test_CXXFLAGS = $(AM_CXXFLAGS) -std=c++11 -I$(top_srcdir)/src
 srfft_test_LDADD = libpocketkaldi.a
@@ -825,6 +765,14 @@ src/transition.$(OBJEXT): src/$(am__dirstamp) \
 	src/$(DEPDIR)/$(am__dirstamp)
 src/nnet.$(OBJEXT): src/$(am__dirstamp) src/$(DEPDIR)/$(am__dirstamp)
 src/am.$(OBJEXT): src/$(am__dirstamp) src/$(DEPDIR)/$(am__dirstamp)
+src/vector.$(OBJEXT): src/$(am__dirstamp) \
+	src/$(DEPDIR)/$(am__dirstamp)
+src/decodable.$(OBJEXT): src/$(am__dirstamp) \
+	src/$(DEPDIR)/$(am__dirstamp)
+src/symbol_table.$(OBJEXT): src/$(am__dirstamp) \
+	src/$(DEPDIR)/$(am__dirstamp)
+src/pocketkaldi.$(OBJEXT): src/$(am__dirstamp) \
+	src/$(DEPDIR)/$(am__dirstamp)
 
 libpocketkaldi.a: $(libpocketkaldi_a_OBJECTS) $(libpocketkaldi_a_DEPENDENCIES) $(EXTRA_libpocketkaldi_a_DEPENDENCIES) 
 	$(AM_V_at)-rm -f libpocketkaldi.a
@@ -929,28 +877,29 @@ test/list_test-list_test.$(OBJEXT): test/$(am__dirstamp) \
 list_test$(EXEEXT): $(list_test_OBJECTS) $(list_test_DEPENDENCIES) $(EXTRA_list_test_DEPENDENCIES) 
 	@rm -f list_test$(EXEEXT)
 	$(AM_V_CXXLD)$(list_test_LINK) $(list_test_OBJECTS) $(list_test_LDADD) $(LIBS)
-src/main.$(OBJEXT): src/$(am__dirstamp) src/$(DEPDIR)/$(am__dirstamp)
-
-main$(EXEEXT): $(main_OBJECTS) $(main_DEPENDENCIES) $(EXTRA_main_DEPENDENCIES) 
-	@rm -f main$(EXEEXT)
-	$(AM_V_CXXLD)$(CXXLINK) $(main_OBJECTS) $(main_LDADD) $(LIBS)
-src/main2.$(OBJEXT): src/$(am__dirstamp) src/$(DEPDIR)/$(am__dirstamp)
-
-main2$(EXEEXT): $(main2_OBJECTS) $(main2_DEPENDENCIES) $(EXTRA_main2_DEPENDENCIES) 
-	@rm -f main2$(EXEEXT)
-	$(AM_V_CXXLD)$(CXXLINK) $(main2_OBJECTS) $(main2_LDADD) $(LIBS)
 test/nnet_test-nnet_test.$(OBJEXT): test/$(am__dirstamp) \
 	test/$(DEPDIR)/$(am__dirstamp)
 
 nnet_test$(EXEEXT): $(nnet_test_OBJECTS) $(nnet_test_DEPENDENCIES) $(EXTRA_nnet_test_DEPENDENCIES) 
 	@rm -f nnet_test$(EXEEXT)
 	$(AM_V_CXXLD)$(nnet_test_LINK) $(nnet_test_OBJECTS) $(nnet_test_LDADD) $(LIBS)
+src/main.$(OBJEXT): src/$(am__dirstamp) src/$(DEPDIR)/$(am__dirstamp)
+
+pocketkaldi$(EXEEXT): $(pocketkaldi_OBJECTS) $(pocketkaldi_DEPENDENCIES) $(EXTRA_pocketkaldi_DEPENDENCIES) 
+	@rm -f pocketkaldi$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(pocketkaldi_OBJECTS) $(pocketkaldi_LDADD) $(LIBS)
 test/srfft_test-srfft_test.$(OBJEXT): test/$(am__dirstamp) \
 	test/$(DEPDIR)/$(am__dirstamp)
 
 srfft_test$(EXEEXT): $(srfft_test_OBJECTS) $(srfft_test_DEPENDENCIES) $(EXTRA_srfft_test_DEPENDENCIES) 
 	@rm -f srfft_test$(EXEEXT)
 	$(AM_V_CXXLD)$(srfft_test_LINK) $(srfft_test_OBJECTS) $(srfft_test_LDADD) $(LIBS)
+test/symbol_table_test-symbol_table_test.$(OBJEXT):  \
+	test/$(am__dirstamp) test/$(DEPDIR)/$(am__dirstamp)
+
+symbol_table_test$(EXEEXT): $(symbol_table_test_OBJECTS) $(symbol_table_test_DEPENDENCIES) $(EXTRA_symbol_table_test_DEPENDENCIES) 
+	@rm -f symbol_table_test$(EXEEXT)
+	$(AM_V_CXXLD)$(symbol_table_test_LINK) $(symbol_table_test_OBJECTS) $(symbol_table_test_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -963,19 +912,22 @@ distclean-compile:
 
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/am.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/cmvn.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/decodable.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/decoder.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/fbank.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/fst.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/hashlist.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/main.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/main2.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/matrix.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/nnet.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/pcm_reader.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/pocketkaldi.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/srfft.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/strlcpy.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/symbol_table.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/transition.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/util.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/vector.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/cmvn_test-cmvn_test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/fbank_test-fbank_test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/fst_test-fst_test.Po@am__quote@
@@ -983,6 +935,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/list_test-list_test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/nnet_test-nnet_test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/srfft_test-srfft_test.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@test/$(DEPDIR)/symbol_table_test-symbol_table_test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tool/$(DEPDIR)/compute_fbank.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@tool/$(DEPDIR)/extract_id2pdf.Po@am__quote@
 
@@ -1115,6 +1068,20 @@ test/srfft_test-srfft_test.obj: test/srfft_test.cc
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='test/srfft_test.cc' object='test/srfft_test-srfft_test.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(srfft_test_CXXFLAGS) $(CXXFLAGS) -c -o test/srfft_test-srfft_test.obj `if test -f 'test/srfft_test.cc'; then $(CYGPATH_W) 'test/srfft_test.cc'; else $(CYGPATH_W) '$(srcdir)/test/srfft_test.cc'; fi`
+
+test/symbol_table_test-symbol_table_test.o: test/symbol_table_test.cc
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(symbol_table_test_CXXFLAGS) $(CXXFLAGS) -MT test/symbol_table_test-symbol_table_test.o -MD -MP -MF test/$(DEPDIR)/symbol_table_test-symbol_table_test.Tpo -c -o test/symbol_table_test-symbol_table_test.o `test -f 'test/symbol_table_test.cc' || echo '$(srcdir)/'`test/symbol_table_test.cc
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) test/$(DEPDIR)/symbol_table_test-symbol_table_test.Tpo test/$(DEPDIR)/symbol_table_test-symbol_table_test.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='test/symbol_table_test.cc' object='test/symbol_table_test-symbol_table_test.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(symbol_table_test_CXXFLAGS) $(CXXFLAGS) -c -o test/symbol_table_test-symbol_table_test.o `test -f 'test/symbol_table_test.cc' || echo '$(srcdir)/'`test/symbol_table_test.cc
+
+test/symbol_table_test-symbol_table_test.obj: test/symbol_table_test.cc
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(symbol_table_test_CXXFLAGS) $(CXXFLAGS) -MT test/symbol_table_test-symbol_table_test.obj -MD -MP -MF test/$(DEPDIR)/symbol_table_test-symbol_table_test.Tpo -c -o test/symbol_table_test-symbol_table_test.obj `if test -f 'test/symbol_table_test.cc'; then $(CYGPATH_W) 'test/symbol_table_test.cc'; else $(CYGPATH_W) '$(srcdir)/test/symbol_table_test.cc'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) test/$(DEPDIR)/symbol_table_test-symbol_table_test.Tpo test/$(DEPDIR)/symbol_table_test-symbol_table_test.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='test/symbol_table_test.cc' object='test/symbol_table_test-symbol_table_test.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(symbol_table_test_CXXFLAGS) $(CXXFLAGS) -c -o test/symbol_table_test-symbol_table_test.obj `if test -f 'test/symbol_table_test.cc'; then $(CYGPATH_W) 'test/symbol_table_test.cc'; else $(CYGPATH_W) '$(srcdir)/test/symbol_table_test.cc'; fi`
 
 ID: $(am__tagged_files)
 	$(am__define_uniq_tagged_files); mkid -fID $$unique
@@ -1361,6 +1328,13 @@ cmvn_test.log: cmvn_test$(EXEEXT)
 nnet_test.log: nnet_test$(EXEEXT)
 	@p='nnet_test$(EXEEXT)'; \
 	b='nnet_test'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
+symbol_table_test.log: symbol_table_test$(EXEEXT)
+	@p='symbol_table_test$(EXEEXT)'; \
+	b='symbol_table_test'; \
 	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \

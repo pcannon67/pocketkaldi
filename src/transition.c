@@ -3,7 +3,13 @@
 #include <assert.h>
 #include "transition.h"
 
-void pk_transition_init(
+void pk_transition_init(pk_transition_t *self) {
+  self->num_transition_ids = 0;
+  self->num_pdfs = 0;
+  self->id2pdf = NULL;
+}
+
+void pk_transition_read(
     pk_transition_t *self,
     pk_readable_t *fd,
     pk_status_t *status) {
@@ -37,7 +43,7 @@ void pk_transition_init(
     self->num_pdfs = num_pdf;
 
     // Index of transition_id start from 1
-    self->id2pdf = (int32_t *)malloc(sizeof(int32_t) * num_transtion + 1);
+    self->id2pdf = (int32_t *)malloc(sizeof(int32_t) * (num_transtion + 1));
     for (int i = 0; i <= num_transtion; ++i) {
       self->id2pdf[i] = pk_bytebuffer_readint32(&bytebuffer);
     }

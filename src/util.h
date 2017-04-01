@@ -9,8 +9,6 @@
 #include <stdio.h>
 #include "pocketkaldi.h"
 
-#define PK_STATUS_MSGMAX 256
-
 // Error types for status
 #define PK_STATUS_STSUCCESS 0
 #define PK_STATUS_STIOERROR 1
@@ -18,14 +16,9 @@
 
 #define PK_WARN fprintf
 #define PK_UNUSED(x) (void)(x)
+#define PK_MIN(a, b) ((a) < (b) ? (a) : (b))
 
 #define PK_PATHMAX 1024
-
-typedef struct pk_status_t {
-  bool ok;
-  int errcode;
-  char message[PK_STATUS_MSGMAX];
-} pk_status_t;
 
 typedef struct pk_readable_t {
   char filename[PK_PATHMAX];
@@ -87,6 +80,25 @@ void pk_readable_read(
     char *buffer,
     int n,
     pk_status_t *status);
+
+// Reads a line from file and store it into buffer. buffer should have at least
+// buffer_size bytes. Returns true if read successfully, otherwise returns
+// false. If failure is caused by reaching end-of-file, status->ok == true,
+// otherwise status->ok == false 
+POCKETKALDI_EXPORT
+bool pk_readable_readline(
+    pk_readable_t *self,
+    char *buffer,
+    int buffer_size,
+    pk_status_t *status);
+
+// Reads a int32 value from file. 
+POCKETKALDI_EXPORT
+int32_t pk_readable_readint32(pk_readable_t *self, pk_status_t *status);
+
+// Reads a float value from file. 
+POCKETKALDI_EXPORT
+float pk_readable_readfloat(pk_readable_t *self, pk_status_t *status);
 
 // Reads bytes from file into byte buffer. The number of bytes to read is
 // specified by the size of buffer. And it also reset the current_position of 

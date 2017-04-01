@@ -10,7 +10,10 @@ void TestFst() {
   pk_status_t status;
 
   pk_status_init(&status);
-  pk_fst_read(&fst, TESTDIR "data/testinput.fst", &status);
+  pk_readable_t *fd = pk_readable_open(TESTDIR "data/testinput.fst", &status);
+  assert(status.ok);
+
+  pk_fst_read(&fst, fd, &status);
   puts(TESTDIR "data/testinput.fst");
   assert(status.ok);
 
@@ -52,6 +55,8 @@ void TestFst() {
   pk_fst_iterate_arc(&fst, 2, &it);
   arc = pk_fst_iter_next(&it);
   assert(arc == NULL);
+
+  pk_readable_close(fd);
 }
 
 int main() {

@@ -19,16 +19,18 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_DECODER_SIMPLE_DECODER_H_
-#define KALDI_DECODER_SIMPLE_DECODER_H_
+#ifndef POCKETKALDI_DECODER_H_
+#define POCKETKALDI_DECODER_H_
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <math.h>
 #include "hashlist.h"
+#include "transition.h"
+#include "decodable.h"
+#include "vector.h"
 #include "fst.h"
-#include "util/stl-utils.h"
-#include "lat/kaldi-lattice.h"
-#include "itf/decodable-itf.h"
+#include "am.h"
 
 typedef struct {
   int32_t *alignment;
@@ -38,7 +40,12 @@ typedef struct {
   float weight;
 } pk_decoder_result_t;
 
+// Initialize the pk_decoder_result_t
+POCKETKALDI_EXPORT
+void pk_decoder_result_init(pk_decoder_result_t *self);
+
 // Destroy the pk_decoder_result_t.
+POCKETKALDI_EXPORT
 void pk_decoder_result_destroy(pk_decoder_result_t *best_path);
 
 typedef struct pk_decoder_token_t {
@@ -52,94 +59,49 @@ typedef struct pk_decoder_token_t {
 } pk_decoder_token_t;
 
 // Allocate and initialize a token for decoder, return the pointer to it
+POCKETKALDI_EXPORT
 pk_decoder_token_t *pk_decoder_token_new(
     const pk_fst_arc_t *arc,
     double acoustic_cost,
     pk_decoder_token_t *previous);
 
 // Delete the token when there is no reference to it
+POCKETKALDI_EXPORT
 void pk_decoder_token_delete(pk_decoder_token_t *self);
 
+typedef struct pk_decoder_t {
+  pk_hashlist_t cur_toks;
+  pk_hashlist_t prev_toks;
+  pk_hashlist_t tmp_toks;
 
-namespace kaldi {
+  const pk_fst_t *fst;
+  float beam;
 
-/** Simplest possible decoder, included largely for didactic purposes and as a
-    means to debug more highly optimized decoders.  See \ref decoders_simple
-    for more information.
- */
-class PkSimpleDecoder {
- public:
-  PkSimpleDecoder(const pk_fst_t *fst, BaseFloat beam);
-  ~PkSimpleDecoder();
-
-  /// Decode this utterance.
-  /// Returns true if any tokens reached the end of the file (regardless of
-  /// whether they are in a final state); query ReachedFinal() after Decode()
-  /// to see whether we reached a final state.
-  bool Decode(DecodableInterface *decodable);
-
-  bool ReachedFinal() const;
-
-  // GetBestPath gets the decoding traceback. If "use_final_probs" is true
-  // AND we reached a final state, it limits itself to final states;
-  // otherwise it gets the most likely token not taking into account final-probs.
-  // fst_out will be empty (Start() == kNoStateId) if nothing was available due to
-  // search error.
-  // If Decode() returned true, it is safe to assume GetBestPath will return true.
-  // It returns true if the output lattice was nonempty (i.e. had states in it);
-  // using the return value is deprecated.
-  bool GetBestPath(pk_decoder_result_t *best_path, bool use_final_probs = true) ;
-  
-  /// *** The next functions are from the "new interface". ***
-  
-  /// FinalRelativeCost() serves the same function as ReachedFinal(), but gives
-  /// more information.  It returns the difference between the best (final-cost plus
-  /// cost) of any token on the final frame, and the best cost of any token
-  /// on the final frame.  If it is infinity it means no final-states were present
-  /// on the final frame.  It will usually be nonnegative.
-  BaseFloat FinalRelativeCost() const;
-
-  /// InitDecoding initializes the decoding, and should only be used if you
-  /// intend to call AdvanceDecoding().  If you call Decode(), you don't need
-  /// to call this.  You can call InitDecoding if you have already decoded an
-  /// utterance and want to start with a new utterance. 
-  void InitDecoding();  
-
-  /// This will decode until there are no more frames ready in the decodable
-  /// object, but if max_num_frames is >= 0 it will decode no more than
-  /// that many frames.  If it returns false, then no tokens are alive,
-  /// which is a kind of error state.
-  void AdvanceDecoding(DecodableInterface *decodable,
-                         int32 max_num_frames = -1);
-  
-  /// Returns the number of frames already decoded.  
-  int32 NumFramesDecoded() const { return num_frames_decoded_; }
-
- private:
-  // ProcessEmitting decodes the frame num_frames_decoded_ of the
-  // decodable object, then increments num_frames_decoded_.
-  void ProcessEmitting(DecodableInterface *decodable);
-
-  void ProcessNonemitting();
-  
-  pk_hashlist_t cur_toks_;
-  pk_hashlist_t prev_toks_;
-  pk_hashlist_t tmp_toks_;
-
-  const pk_fst_t *fst_;
-  BaseFloat beam_;
   // Keep track of the number of frames decoded in the current file.
-  int32 num_frames_decoded_;
-  
-  void ClearToks(pk_hashlist_t *tok);
+  int32_t num_frames_decoded;
+} pk_decoder_t;
 
-  void PruneToks(BaseFloat beam, pk_hashlist_t *toks);
-  
-  KALDI_DISALLOW_COPY_AND_ASSIGN(PkSimpleDecoder);
-};
+// Initialize the decoder. It just borrows the fst
+POCKETKALDI_EXPORT
+void pk_decoder_init(pk_decoder_t *self, const pk_fst_t *fst, float beam);
 
+// Destroy the decoder
+POCKETKALDI_EXPORT
+void pk_decoder_destroy(pk_decoder_t *self);
 
-} // end namespace kaldi.
+// Decode given decoable object
+POCKETKALDI_EXPORT
+bool pk_decoder_decode(pk_decoder_t *self, pk_decodable_t *decodable);
 
+// Check if it reached the final state
+POCKETKALDI_EXPORT
+bool pk_decoder_reachedfinal(pk_decoder_t *self);
 
-#endif
+// Outputs best_path corresponding to the single best path through the lattice.
+POCKETKALDI_EXPORT
+bool pk_decoder_bestpath(
+    pk_decoder_t *self,
+    pk_decoder_result_t *best_path,
+    bool use_final_probs);
+
+#endif  // POCKETKALDI_DECODER_H_

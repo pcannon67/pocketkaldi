@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-static void pk_fst_init(pk_fst_t *self) {
+void pk_fst_init(pk_fst_t *self) {
   self->start_state = 0;
   self->state_number = 0;
   self->arc_number = 0;
@@ -31,91 +31,51 @@ void pk_fst_destroy(pk_fst_t *self) {
 
 void pk_fst_read(
     pk_fst_t *self,
-    const char *filename,
+    pk_readable_t *fd,
     pk_status_t *status) {
-  pk_status_init(status);
-  pk_fst_init(self);
-
-  pk_readable_t *fd = pk_readable_open(filename, status);
-
-  int64_t filesize = 0;
-  char *data = NULL;
-  if (status->ok) {
-    filesize = fd->filesize;
-    data = (char *)malloc(filesize);
-    pk_readable_read(fd, data, filesize, status);
-  }
-  char *buffer_ptr = data;
-
   // Check magic number
-  if (status->ok) {
-    int32_t magic_number = *((int32_t *)buffer_ptr);
-    buffer_ptr += 4;
-    if (magic_number != 0x3323) {
-      PK_STATUS_CORRUPTED(status, "%s", filename);
-    }
+  int32_t magic_number = pk_readable_readint32(fd, status);
+  if (!status->ok) goto pk_fst_read_failed;
+  if (magic_number != 0x3323) {
+    PK_STATUS_CORRUPTED(status, "%s", fd->filename);
+    goto pk_fst_read_failed;
   }
 
   // Read metadata and check filesize
-  int state_number = 0;
-  int arc_number = 0;
-  int start_state = 0;
-  if (status->ok) {
-    state_number = *((int32_t *)buffer_ptr);
-    buffer_ptr += sizeof(int32_t);
-    arc_number = *((int32_t *)buffer_ptr);
-    buffer_ptr += sizeof(int32_t);
-    start_state = *((int32_t *)buffer_ptr);
-    buffer_ptr += sizeof(int32_t);
+  self->state_number = pk_readable_readint32(fd, status);
+  if (!status->ok) goto pk_fst_read_failed;
+  self->arc_number = pk_readable_readint32(fd, status);
+  if (!status->ok) goto pk_fst_read_failed;
+  self->start_state = pk_readable_readint32(fd, status);
+  if (!status->ok) goto pk_fst_read_failed;
 
-    // Now we can calculate the expected filesize
-    int64_t expected_size = 16;  // Base bytes
-    expected_size += state_number * sizeof(float);  // Final
-    expected_size += state_number * sizeof(int32_t);  // Arc index
-    expected_size += arc_number * sizeof(pk_fst_arc_t);  // Arc
-
-    self->state_number = state_number;
-    self->arc_number = arc_number;
-    self->start_state = start_state;
-
-    if (expected_size != filesize) {
-      PK_STATUS_CORRUPTED(status, "%s", filename);
-    }
+  // Final weight
+  self->final = (float *)malloc(self->state_number * sizeof(float));
+  for (int idx = 0; idx < self->state_number; ++idx) {
+    self->final[idx] = pk_readable_readfloat(fd, status);
+    if (!status->ok) goto pk_fst_read_failed;
   }
 
-  // Read other parts
-  if (status->ok) {
-    self->final = (float *)malloc(state_number * sizeof(float));
-    for (int idx = 0; idx < state_number; ++idx) {
-      self->final[idx] = *((float *)buffer_ptr);
-      buffer_ptr += sizeof(float);
-    }
-
-    self->arc_index = (int32_t *)malloc(state_number * sizeof(int32_t));
-    for (int idx = 0; idx < state_number; ++idx) {
-      self->arc_index[idx] = *((int32_t *)buffer_ptr);
-      buffer_ptr += sizeof(int32_t);
-    }
-
-    self->arc = (pk_fst_arc_t *)malloc(arc_number * sizeof(pk_fst_arc_t));
-    for (int idx = 0; idx < arc_number; ++idx) {
-      self->arc[idx].next_state = *((int32_t *)buffer_ptr);
-      buffer_ptr += sizeof(int32_t);
-      self->arc[idx].input_label = *((int32_t *)buffer_ptr);
-      buffer_ptr += sizeof(int32_t);
-      self->arc[idx].output_label = *((int32_t *)buffer_ptr);
-      buffer_ptr += sizeof(int32_t);
-      self->arc[idx].weight = *((float *)buffer_ptr);
-      buffer_ptr += sizeof(float);
-    }
-
-    if (buffer_ptr - data != filesize) {
-      PK_STATUS_CORRUPTED(status, "%s", filename);
-    }
+  self->arc_index = (int32_t *)malloc(self->state_number * sizeof(int32_t));
+  for (int idx = 0; idx < self->state_number; ++idx) {
+    self->arc_index[idx] = pk_readable_readint32(fd, status);
+    if (!status->ok) goto pk_fst_read_failed;
   }
 
-  if (fd != NULL) pk_readable_close(fd);
-  if (!status->ok) {
+  self->arc = (pk_fst_arc_t *)malloc(self->arc_number * sizeof(pk_fst_arc_t));
+  for (int idx = 0; idx < self->arc_number; ++idx) {
+    self->arc[idx].next_state = pk_readable_readint32(fd, status);
+    if (!status->ok) goto pk_fst_read_failed;
+    self->arc[idx].input_label = pk_readable_readint32(fd, status);
+    if (!status->ok) goto pk_fst_read_failed;
+    self->arc[idx].output_label = pk_readable_readint32(fd, status);
+    if (!status->ok) goto pk_fst_read_failed;
+    self->arc[idx].weight = pk_readable_readfloat(fd, status);
+    if (!status->ok) goto pk_fst_read_failed;
+  }
+
+  if (false) {
+pk_fst_read_failed:
     pk_fst_destroy(self);
   }
 }

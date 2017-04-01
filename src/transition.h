@@ -17,10 +17,14 @@ typedef struct pk_transition_t {
   int32_t *id2pdf;
 } pk_transition_t;
 
+// Initialize the transitoin
+POCKETKALDI_EXPORT
+void pk_transition_init(pk_transition_t *self);
+
 // Read the transition model from fd. And when failed, set status to failed
 // state
 POCKETKALDI_EXPORT
-void pk_transition_init(
+void pk_transition_read(
     pk_transition_t *self,
     pk_readable_t *fd,
     pk_status_t *status);

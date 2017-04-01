@@ -31,7 +31,7 @@ AC_ARG_ENABLE([tools],
 [if test x$with_kaldi = xno || test x$with_kaldi = x; then
   AC_MSG_ERROR([--enable-tools: path of Kaldi should be specified (using --with-kaidi=DIR)])
 fi
-AM_CONDITIONAL(ENABLE_TOOLS, true)])
+AM_CONDITIONAL(ENABLE_TOOLS, true)], [AM_CONDITIONAL(ENABLE_TOOLS, false)])
 
 AC_CONFIG_HEADERS([src/config.h])
 AC_CONFIG_FILES([Makefile])

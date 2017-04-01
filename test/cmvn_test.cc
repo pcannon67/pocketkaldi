@@ -66,7 +66,7 @@ void TestOnlineCmvn() {
 
   // Apply CMVN
   pk_vector_t feats;
-  pk_vector_init(&feats, 0, NAN);
+  pk_vector_init(&feats, fbank_feat.nrow, NAN);
   for (int i = 0; i < fbank_feat.ncol; ++i) {
     pk_cmvn_getframe(&cmvn, i, &feats);
     for (int d = 0; d < feats.dim; ++d) {

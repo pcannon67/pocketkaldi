@@ -334,5 +334,6 @@ void pk_nnet_destroy(pk_nnet_t *self) {
     free(layer);
     self->layers[layer_idx] = NULL;
   }
+  free(self->layers);
   self->num_layers = 0;
 }

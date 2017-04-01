@@ -4,9 +4,8 @@ AM_CFLAGS = -std=c99
 AM_CXXFLAGS = -I$(top_srcdir)/../kaldi/src -I$(top_srcdir)/../kaldi/tools/openfst/src/include/ -I$(top_srcdir)/../kaldi/tools/ATLAS/include/ -I$(top_srcdir)/src -g -fPIC -std=c++11
 AM_LDFLAGS = -pthread -ldl -L/usr/local/cuda-8.0/lib64/
 
-bin_PROGRAMS = main main2
-main_SOURCES = src/main.cc
-main2_SOURCES = src/main2.cc 
+bin_PROGRAMS = pocketkaldi
+pocketkaldi_SOURCES = src/main.c 
 
 lib_LIBRARIES = libpocketkaldi.a
 libpocketkaldi_a_SOURCES = src/hashlist.c \
@@ -14,60 +13,20 @@ libpocketkaldi_a_SOURCES = src/hashlist.c \
                            src/fst.c \
                            src/matrix.c \
                            src/pcm_reader.c \
-                           src/decoder.cc \
+                           src/decoder.c \
                            src/srfft.c \
                            src/fbank.c \
                            src/strlcpy.c \
                            src/cmvn.c \
                            src/transition.c \
                            src/nnet.c \
-                           src/am.c
+                           src/am.c \
+                           src/vector.c \
+                           src/decodable.c \
+                           src/symbol_table.c \
+                           src/pocketkaldi.c
 
-main_LDADD = $(KALDI_ROOT)/src/decoder/kaldi-decoder.a \
-              $(KALDI_ROOT)/src/lat/kaldi-lat.a \
-              $(KALDI_ROOT)/src/fstext/kaldi-fstext.a \
-              $(KALDI_ROOT)/src/hmm/kaldi-hmm.a \
-              $(KALDI_ROOT)/src/nnet2/kaldi-nnet2.a \
-              $(KALDI_ROOT)/src/feat/kaldi-feat.a \
-              $(KALDI_ROOT)/src/transform/kaldi-transform.a \
-              $(KALDI_ROOT)/src/gmm/kaldi-gmm.a \
-              $(KALDI_ROOT)/src/tree/kaldi-tree.a \
-              $(KALDI_ROOT)/src/util/kaldi-util.a \
-              $(KALDI_ROOT)/src/thread/kaldi-thread.a \
-              $(KALDI_ROOT)/src/cudamatrix/kaldi-cudamatrix.a \
-              $(KALDI_ROOT)/src/matrix/kaldi-matrix.a \
-              $(KALDI_ROOT)/src/base/kaldi-base.a \
-              $(ATLASLIBS) \
-              $(KALDI_ROOT)/tools/openfst/lib/libfst.a \
-              libpocketkaldi.a \
-              -ldl \
-              -lcudart \
-              -lcuda \
-              -lcurand \
-              -lcublas
-
-main2_LDADD = $(KALDI_ROOT)/src/decoder/kaldi-decoder.a \
-              $(KALDI_ROOT)/src/lat/kaldi-lat.a \
-              $(KALDI_ROOT)/src/fstext/kaldi-fstext.a \
-              $(KALDI_ROOT)/src/hmm/kaldi-hmm.a \
-              $(KALDI_ROOT)/src/nnet2/kaldi-nnet2.a \
-              $(KALDI_ROOT)/src/feat/kaldi-feat.a \
-              $(KALDI_ROOT)/src/transform/kaldi-transform.a \
-              $(KALDI_ROOT)/src/gmm/kaldi-gmm.a \
-              $(KALDI_ROOT)/src/tree/kaldi-tree.a \
-              $(KALDI_ROOT)/src/util/kaldi-util.a \
-              $(KALDI_ROOT)/src/thread/kaldi-thread.a \
-              $(KALDI_ROOT)/src/cudamatrix/kaldi-cudamatrix.a \
-              $(KALDI_ROOT)/src/matrix/kaldi-matrix.a \
-              $(KALDI_ROOT)/src/base/kaldi-base.a \
-              $(ATLASLIBS) \
-              $(KALDI_ROOT)/tools/openfst/lib/libfst.a \
-              libpocketkaldi.a \
-              -ldl \
-              -lcudart \
-              -lcuda \
-              -lcurand \
-              -lcublas
+pocketkaldi_LDADD = libpocketkaldi.a -lm
 
 if ENABLE_TOOLS
     bin_PROGRAMS += compute_fbank extract_id2pdf
@@ -95,7 +54,8 @@ TESTS = hashlist_test \
         srfft_test \
         fbank_test \
         cmvn_test \
-        nnet_test
+        nnet_test \
+        symbol_table_test
 
 check_PROGRAMS = hashlist_test \
                  list_test \
@@ -103,7 +63,8 @@ check_PROGRAMS = hashlist_test \
                  srfft_test \
                  fbank_test \
                  cmvn_test \
-                 nnet_test
+                 nnet_test \
+                 symbol_table_test
 
 hashlist_test_SOURCES = test/hashlist_test.cc
 hashlist_test_CXXFLAGS = $(AM_CXXFLAGS) -std=c++11 -I$(top_srcdir)/src
@@ -116,6 +77,10 @@ list_test_LDADD = libpocketkaldi.a
 fst_test_SOURCES = test/fst_test.cc
 fst_test_CXXFLAGS = $(AM_CXXFLAGS) -std=c++11 -I$(top_srcdir)/src -DTESTDIR=\"$(top_srcdir)/test/\"
 fst_test_LDADD = libpocketkaldi.a
+
+symbol_table_test_SOURCES = test/symbol_table_test.cc
+symbol_table_test_CXXFLAGS = $(AM_CXXFLAGS) -std=c++11 -I$(top_srcdir)/src -DTESTDIR=\"$(top_srcdir)/test/\"
+symbol_table_test_LDADD = libpocketkaldi.a
 
 srfft_test_SOURCES = test/srfft_test.cc
 srfft_test_CXXFLAGS = $(AM_CXXFLAGS) -std=c++11 -I$(top_srcdir)/src

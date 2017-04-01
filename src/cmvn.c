@@ -113,7 +113,8 @@ void pk_cmvn_apply(const pk_vector_t *stats, pk_vector_t *feats) {
 }
 
 void pk_cmvn_getframe(pk_cmvn_t *self, int frame, pk_vector_t *feats) {
-  pk_vector_resize(feats, PK_FBANK_DIM);
+  assert(feats->dim == PK_FBANK_DIM && "pk_cmvn_getframe: feats dim mismatch");
+
   pk_vector_t stats;
   pk_vector_init(&stats, 0, NAN);
 
