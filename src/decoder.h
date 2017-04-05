@@ -62,21 +62,15 @@ typedef struct pk_decoder_token_t {
   int32_t ref_count;
 } pk_decoder_token_t;
 
-// Allocate and initialize a token for decoder, return the pointer to it
-POCKETKALDI_EXPORT
-pk_decoder_token_t *pk_decoder_token_new(
-    const pk_fst_arc_t *arc,
-    double acoustic_cost,
-    pk_decoder_token_t *previous);
-
-// Delete the token when there is no reference to it
-POCKETKALDI_EXPORT
-void pk_decoder_token_delete(pk_decoder_token_t *self);
 
 typedef struct pk_decoder_t {
   pk_hashlist_t cur_toks;
   pk_hashlist_t prev_toks;
   pk_hashlist_t tmp_toks;
+
+  // empty_toks is a linklist of empty (freed) tokens. And these tokens a linked
+  // by the previous field
+  pk_decoder_token_t *empty_toks;
 
   const pk_fst_t *fst;
   float beam;

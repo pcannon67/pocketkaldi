@@ -198,10 +198,8 @@ void pk_process(pk_t *recognizer, pk_utterance_t *utt) {
       &feats);
   t = clock() - t;
   fprintf(stderr, "NNET: %lfms\n", ((float)t) / CLOCKS_PER_SEC  * 1000);
-  t = clock();
+  
   pk_decoder_decode(&decoder, &decodable);
-  t = clock() - t;
-  fprintf(stderr, "Decode: %lfms\n", ((float)t) / CLOCKS_PER_SEC  * 1000);
 
   // Get final result
   pk_decoder_result_t best_path;
