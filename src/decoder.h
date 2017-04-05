@@ -32,6 +32,10 @@
 #include "fst.h"
 #include "am.h"
 
+#define PK_DECODER_BEAMSIZE 30000
+#define PK_DECODER_BEAMDELTA 0.5
+#define PK_DECODER_MINACTIVE 200
+
 typedef struct {
   int32_t *alignment;
   int32_t alignment_size;

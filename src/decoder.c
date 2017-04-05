@@ -29,6 +29,74 @@ PKLIST_DEFINE(pk_decoder_token_t *, token_list)
 PKLIST_DEFINE(int, int_list)
 PKLIST_DEFINE(int32_t, int32_list)
 
+// Compare two float numbers pointered by a and b
+static int float_cmp(const void *a, const void *b, void *thunk) {
+  PK_UNUSED(thunk);
+
+  float float_a = *((float *)a);
+  float float_b = *((float *)b);
+  if (float_a > float_b) {
+    return 1;
+  } else if (float_a < float_b) {
+    return -1;
+  } else {
+    return 0;
+  }
+}
+
+// Gets the weight cutoff.
+static double get_cutoff(
+    pk_decoder_t *self,
+    const pk_hashlist_t *token_list,
+    float *adaptive_beam,
+    pk_hashlist_elem_t **best_elem) {
+  double best_cost = INFINITY;
+  float *cost_array = (float *)malloc(sizeof(float) * token_list->size);
+  
+  int cost_count = 0;
+  pk_hashlist_elem_t *elem = token_list->head;
+  while (elem) {
+    pk_decoder_token_t *token = (pk_decoder_token_t *)elem->value;
+    float cost = token->cost;
+    cost_array[cost_count] = cost;
+
+    if (cost < best_cost) {
+      best_cost = cost;
+      if (best_elem) *best_elem = elem;
+    }
+
+    elem = elem->next;
+    ++cost_count;
+  }
+  assert(cost_count == token_list->size);
+
+  double beam_cutoff = best_cost + self->beam;
+  double min_active_cutoff = NAN;
+  double max_active_cutoff = NAN;
+  
+  if (cost_count > PK_DECODER_BEAMSIZE) {
+    // The same as std::nth_element
+    pk_introselect_r(
+        cost_array,
+        cost_count,
+        sizeof(int),
+        PK_DECODER_BEAMSIZE,
+        float_cmp,
+        NULL);
+    max_active_cutoff = cost_array[PK_DECODER_BEAMSIZE];
+  }
+
+  if (max_active_cutoff < beam_cutoff) { // max_active is tighter than beam.
+    *adaptive_beam = max_active_cutoff - best_cost + PK_DECODER_BEAMDELTA;
+    beam_cutoff = max_active_cutoff;
+  } else {
+    *adaptive_beam = self->beam;
+  }
+
+  free(cost_array);
+  return beam_cutoff;
+}
+
 void pk_decoder_result_init(pk_decoder_result_t *self) {
   self->alignment = NULL;
   self->alignment_size = 0;
@@ -99,7 +167,7 @@ static void clear_toks(pk_hashlist_t *tok) {
 }
 
 // Processes nonemitting arcs for one frame.  Propagates within cur_toks_.
-static void process_nonemitting(pk_decoder_t *self) {
+static void process_nonemitting(pk_decoder_t *self, double cutoff) {
   int_list_t queue;
   int_list_init(&queue);
   double best_cost = INFINITY;
@@ -112,7 +180,6 @@ static void process_nonemitting(pk_decoder_t *self) {
     best_cost = PK_MIN(best_cost, (double)token->cost);
     elem = elem->next;
   }
-  double cutoff = best_cost + self->beam;
   
   while (!int_list_empty(&queue)) {
     int state = int_list_back(&queue);
@@ -177,106 +244,106 @@ static void init_decoding(pk_decoder_t *self) {
   pk_decoder_token_t *start_token = pk_decoder_token_new(&dummy_arc, 0, NULL);
   pk_hashlist_insert(&self->cur_toks, start_state, start_token);
   self->num_frames_decoded = 0;
-  process_nonemitting(self);
+  process_nonemitting(self, 1e38);
 }
 
 
 // Processes emitting arcs for one frame.  Propagates from prev_toks_ to
 // cur_toks_.
-static void process_emitting(
+static double process_emitting(
     pk_decoder_t *self,
     pk_decodable_t *decodable) {
   int32_t frame = self->num_frames_decoded;
-
   double cutoff = INFINITY;
-  pk_hashlist_elem_t *elem = self->prev_toks.head;
-  while (elem) {
-    int state = elem->key;
-    pk_decoder_token_t *tok = (pk_decoder_token_t *)elem->value;
-    assert(state == tok->next_state);
+
+  float adaptive_beam;
+  pk_hashlist_elem_t *best_elem = NULL;
+  float weight_cutoff = get_cutoff(
+      self,
+      &self->prev_toks,
+      &adaptive_beam,
+      &best_elem);
+
+  // This is the cutoff we use after adding in the log-likes (i.e.
+  // for the next frame).  This is a bound on the cutoff we will use
+  // on the next frame.
+  double next_weight_cutoff = INFINITY;
+  
+  // First process the best token to get a hopefully
+  // reasonably tight bound on the next cutoff.
+  if (best_elem) {
+    float state = best_elem->key;
+    pk_decoder_token_t *tok = (pk_decoder_token_t *)best_elem->value;
     pk_fst_iter_t arc_iter;
     pk_fst_iterate_arc(self->fst, state, &arc_iter);
     const pk_fst_arc_t *arc = NULL;
     while ((arc = pk_fst_iter_next(&arc_iter)) != NULL) {
-      if (arc->input_label != 0) {  // propagate..
+      if (arc->input_label != 0) {
         float acoustic_cost = -pk_decodable_loglikelihood(
             decodable,
             frame,
             arc->input_label);
         double total_cost = tok->cost + arc->weight + acoustic_cost;
-        
-        if (total_cost > cutoff) continue;
-        if (total_cost + self->beam < cutoff) {
-          cutoff = total_cost + self->beam;
+        if (total_cost + adaptive_beam < next_weight_cutoff) {
+          next_weight_cutoff = total_cost + adaptive_beam;
         }
-        pk_decoder_token_t *new_tok = pk_decoder_token_new(
-            arc,
-            acoustic_cost,
-            tok); 
-        pk_hashlist_elem_t *new_elem = pk_hashlist_find(
-            &self->cur_toks,
-            (pk_hashlist_key_t)arc->next_state);
-        if (new_elem == NULL) {
-          pk_hashlist_insert(
-              &self->cur_toks,
-              (pk_hashlist_key_t)arc->next_state,
-              (pk_hashlist_value_t)new_tok);
-        } else {
-          pk_decoder_token_t *token = (pk_decoder_token_t *)new_elem->value;
-          if (token->cost > new_tok->cost) {
-            pk_decoder_token_delete(token);
-            new_elem->value = (pk_hashlist_value_t)new_tok;
-          } else {
-            pk_decoder_token_delete(new_tok);
+      }
+    }
+  }
+  assert(next_weight_cutoff != NAN);
+
+  pk_hashlist_elem_t *elem = self->prev_toks.head;
+  while (elem) {
+    int state = elem->key;
+    pk_decoder_token_t *tok = (pk_decoder_token_t *)elem->value;
+    assert(state == tok->next_state);
+
+    if (tok->cost < weight_cutoff) {
+      pk_fst_iter_t arc_iter;
+      pk_fst_iterate_arc(self->fst, state, &arc_iter);
+      const pk_fst_arc_t *arc = NULL;
+      while ((arc = pk_fst_iter_next(&arc_iter)) != NULL) {
+        if (arc->input_label != 0) {  // propagate..
+          float acoustic_cost = -pk_decodable_loglikelihood(
+              decodable,
+              frame,
+              arc->input_label);
+          double total_cost = tok->cost + arc->weight + acoustic_cost;
+                  
+          if (total_cost < next_weight_cutoff) {
+            pk_decoder_token_t *new_tok = pk_decoder_token_new(
+                arc,
+                acoustic_cost,
+                tok); 
+            pk_hashlist_elem_t *new_elem = pk_hashlist_find(
+                &self->cur_toks,
+                (pk_hashlist_key_t)arc->next_state);
+            if (total_cost + adaptive_beam < next_weight_cutoff) {
+              next_weight_cutoff = total_cost + adaptive_beam;
+            }
+            if (new_elem == NULL) {
+              pk_hashlist_insert(
+                  &self->cur_toks,
+                  (pk_hashlist_key_t)arc->next_state,
+                  (pk_hashlist_value_t)new_tok);
+            } else {
+              pk_decoder_token_t *token = (pk_decoder_token_t *)new_elem->value;
+              if (token->cost > new_tok->cost) {
+                pk_decoder_token_delete(token);
+                new_elem->value = (pk_hashlist_value_t)new_tok;
+              } else {
+                pk_decoder_token_delete(new_tok);
+              }
+            }
           }
         }
       }
     }
+
     elem = elem->next;
   }
   self->num_frames_decoded++;
-}
-
-static void prune_toks(
-    pk_decoder_t *self,
-    float beam,
-    pk_hashlist_t *toks) {
-  if (toks->size == 0) {
-    return;
-  }
-  double best_cost = INFINITY;
-  pk_hashlist_elem_t *elem = toks->head;
-  while (elem) {
-    pk_decoder_token_t *token = (pk_decoder_token_t *)elem->value;
-    best_cost = PK_MIN(best_cost, (double)token->cost);
-    elem = elem->next;
-  }
-
-  int_list_t retained;
-  int_list_init(&retained);
-  double cutoff = best_cost + beam;
-  elem = toks->head;
-  while (elem) {
-    int state = (int)elem->key;
-    pk_decoder_token_t *token = (pk_decoder_token_t *)elem->value;
-
-    if (token->cost < cutoff) {
-      int_list_push_back(&retained, state);
-    } else {
-      pk_decoder_token_delete(token);
-    }
-    elem = elem->next;
-  }
-  pk_hashlist_clear(&self->tmp_toks);
-  for (int i = 0; i < retained.size; i++) {
-    int state = retained.data[i];
-    elem = pk_hashlist_find(toks, (pk_hashlist_key_t)state);
-    assert(elem);
-    pk_hashlist_insert(&self->tmp_toks, (pk_hashlist_key_t)state, elem->value);
-  }
-  pk_hashlist_swap(&self->tmp_toks, toks);
-
-  int_list_destroy(&retained);
+  return next_weight_cutoff;
 }
 
 void pk_decoder_init(pk_decoder_t *self, const pk_fst_t *fst, float beam) {
@@ -301,9 +368,8 @@ bool pk_decoder_decode(pk_decoder_t *self, pk_decodable_t *decodable) {
   while(!pk_decodable_islastframe(decodable, self->num_frames_decoded - 1)) {
     clear_toks(&self->prev_toks);
     pk_hashlist_swap(&self->cur_toks, &self->prev_toks);
-    process_emitting(self, decodable);
-    process_nonemitting(self);
-    prune_toks(self, self->beam, &self->cur_toks);
+    double cutoff = process_emitting(self, decodable);
+    process_nonemitting(self, cutoff);
   }
   return self->cur_toks.size > 0;
 }

@@ -147,6 +147,23 @@ int64_t pk_bytebuffer_readint64(pk_bytebuffer_t *self);
 POCKETKALDI_EXPORT
 float pk_bytebuffer_readfloat(pk_bytebuffer_t *self);
 
-
+// The same as std::nth_elemnt: get the n-th element in array. And the element
+// at the nth position is the element that would be in that position in a
+// sorted sequence
+// base_ptr: pointer to the array
+// nmemb: number of elements in array
+// size: size of each element
+// nth: to get the n-th element
+// compar: comparator
+// thunk: thunk used in comparasion, usually NULL
+// Thanks wengxt :)
+POCKETKALDI_EXPORT
+void pk_introselect_r(
+    void *base_ptr,
+    size_t nmemb,
+    size_t size,
+    size_t nth,
+    int (*compar)(const void *, const void *, void *),
+    void *thunk);
 
 #endif  // POCKETKALDI_UTIL_H_
