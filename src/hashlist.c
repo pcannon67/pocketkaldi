@@ -14,7 +14,7 @@
 
 // Insert one element into bucket. Only changes buckets amd the elememt, other
 // parts like link list or sizes will not be changed
-static void insert_to_bucket(
+static inline void insert_to_bucket(
     pk_hashlist_t *hashlist,
     pk_hashlist_elem_t *elem) {
   int hashval = hash(elem->key) % hashlist->bucket_size;
@@ -59,6 +59,7 @@ void pk_hashlist_init(pk_hashlist_t *hashlist) {
   hashlist->empty_head = NULL;
 }
 
+int visit_count = 0;
 void pk_hashlist_destroy(pk_hashlist_t *hashlist) {
   pk_free(hashlist->buckets);
   hashlist->buckets = NULL;
@@ -98,17 +99,19 @@ void pk_hashlist_insert(
 
   // Check if it is already exists in hashlist
   int hashval = hash(key) % hashlist->bucket_size;
-  pk_hashlist_elem_t *bucket = hashlist->buckets[hashval];
-  pk_hashlist_elem_t *start = bucket;
+  pk_hashlist_elem_t **start = &hashlist->buckets[hashval];
   bool has_updated = false;
-  while (start) {
-    if (start->key == key) {
-      start->value = value;
+
+  while (*start) {
+    if ((*start)->key == key) {
+      (*start)->value = value;
       has_updated = true;
       break;
     }
-    start = start->next_bucket_elem;
+    start = &((*start)->next_bucket_elem);
   }
+  // After this while loop finished, start points to the pointer that the new
+  // element would be placed on
 
   // If key is not exist, allocate the element and put into hashlist
   if (!has_updated) {
@@ -125,14 +128,14 @@ void pk_hashlist_insert(
     elem->key = key;
     elem->value = value;
     elem->next = hashlist->head;
-    elem->next_bucket_elem = NULL;  // It will be changed soon
+    elem->next_bucket_elem = NULL;  
     hashlist->head = elem;
     if (hashlist->tail == NULL) {
       hashlist->tail = elem;
     }
 
     // Insert into buckets
-    insert_to_bucket(hashlist, elem);
+    *start = elem;
     ++hashlist->size;
   }
 

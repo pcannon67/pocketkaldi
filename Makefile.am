@@ -25,7 +25,7 @@ libpocketkaldi_a_SOURCES = src/hashlist.c \
                            src/decodable.c \
                            src/symbol_table.c \
                            src/pocketkaldi.c \
-                           src/introspect.c
+                           src/introspect.c 
 
 pocketkaldi_LDADD = libpocketkaldi.a -lm
 

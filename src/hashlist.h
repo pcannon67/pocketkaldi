@@ -52,7 +52,7 @@ pk_hashlist_elem_t *pk_hashlist_find(
     pk_hashlist_t *hashlist,
     pk_hashlist_key_t key);
 
-// Clear all elements in hashlist
+// Clear all elements in hashlist 
 POCKETKALDI_EXPORT
 void pk_hashlist_clear(pk_hashlist_t *hashlist);
 
