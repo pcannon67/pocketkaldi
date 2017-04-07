@@ -44,6 +44,9 @@ void TestClear() {
 
   TestHashList(&hashlist);
   pk_hashlist_clear(&hashlist);
+  pk_hashlist_clear(&hashlist);
+  TestHashList(&hashlist);
+  pk_hashlist_clear(&hashlist);
   TestHashList(&hashlist);
 
   pk_hashlist_destroy(&hashlist);

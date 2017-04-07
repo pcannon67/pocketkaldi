@@ -64,8 +64,7 @@ typedef struct pk_decoder_token_t {
 
 
 typedef struct pk_decoder_t {
-  pk_hashlist_t cur_toks;
-  pk_hashlist_t prev_toks;
+  pk_hashlist_t toks;
   pk_hashlist_t tmp_toks;
 
   // empty_toks is a linklist of empty (freed) tokens. And these tokens a linked

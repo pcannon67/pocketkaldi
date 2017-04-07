@@ -59,7 +59,6 @@ void pk_hashlist_init(pk_hashlist_t *hashlist) {
   hashlist->empty_head = NULL;
 }
 
-int visit_count = 0;
 void pk_hashlist_destroy(pk_hashlist_t *hashlist) {
   pk_free(hashlist->buckets);
   hashlist->buckets = NULL;
@@ -165,10 +164,12 @@ void pk_hashlist_clear(pk_hashlist_t *hashlist) {
     // Concat two linklists: head and empty_head
     assert(hashlist->tail->next == NULL);
     hashlist->tail->next = hashlist->empty_head;
+
+    hashlist->empty_head = hashlist->head;
+    hashlist->head = NULL;
+    hashlist->tail = NULL;
   }
-  hashlist->empty_head = hashlist->head;
-  hashlist->head = NULL;
-  hashlist->tail = NULL;
+
 }
 
 void pk_hashlist_swap(pk_hashlist_t *hashlist1, pk_hashlist_t *hashlist2) {
