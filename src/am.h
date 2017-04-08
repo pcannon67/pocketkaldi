@@ -28,13 +28,11 @@ void pk_am_read(pk_am_t *self, pk_readable_t *fd, pk_status_t *status);
 POCKETKALDI_EXPORT
 void pk_am_destroy(pk_am_t *self);
 
-// Compute the log-likelihood of the frame indexed by frame_idx in frames
-// And output as a vector loglikelihood
+// Compute the log-likelihood of the feature matrix
 POCKETKALDI_EXPORT
 void pk_am_compute(
     const pk_am_t *self,
     const pk_matrix_t *frames,
-    int frame_idx,
-    pk_vector_t *loglikelihood);
+    pk_matrix_t *loglikelihood);
 
 #endif

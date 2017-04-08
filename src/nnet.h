@@ -20,8 +20,8 @@
 typedef struct pk_nnet_layer_t {
   void (*propagate)(
       const struct pk_nnet_layer_t *self,
-      const pk_vector_t *in,
-      pk_vector_t *out);
+      const pk_matrix_t *in,
+      pk_matrix_t *out);
   void (*destroy)(struct pk_nnet_layer_t *self);
 } pk_nnet_layer_t;
 
@@ -47,13 +47,6 @@ typedef struct pk_nnet_layer_normalize_t {
   pk_nnet_layer_t base;
 } pk_nnet_layer_normalize_t;
 
-// Add layer: x + scale * b
-typedef struct pk_nnet_layer_add_t {
-  pk_nnet_layer_t base;
-  float scale;
-  pk_vector_t b;
-} pk_nnet_layer_add_t;
-
 typedef struct pk_nnet_t {
   pk_nnet_layer_t **layers;
   int num_layers;
@@ -77,8 +70,8 @@ void pk_nnet_layer_linear_destroy(pk_nnet_layer_t *self);
 POCKETKALDI_EXPORT
 void pk_nnet_layer_linear_propagate(
     const pk_nnet_layer_t *self,
-    const pk_vector_t *in,
-    pk_vector_t *out);
+    const pk_matrix_t *in,
+    pk_matrix_t *out);
 
 // Initialize the softmax layer
 POCKETKALDI_EXPORT
@@ -88,8 +81,8 @@ pk_nnet_layer_t *pk_nnet_layer_softmax_init(pk_nnet_layer_softmax_t *self);
 POCKETKALDI_EXPORT
 void pk_nnet_layer_softmax_propagate(
     const pk_nnet_layer_t *,
-    const pk_vector_t *in,
-    pk_vector_t *out);
+    const pk_matrix_t *in,
+    pk_matrix_t *out);
 
 // Initialize the ReLU layer
 POCKETKALDI_EXPORT
@@ -99,8 +92,8 @@ pk_nnet_layer_t *pk_nnet_layer_relu_init(pk_nnet_layer_relu_t *self);
 POCKETKALDI_EXPORT
 void pk_nnet_layer_relu_propagate(
     const pk_nnet_layer_t *,
-    const pk_vector_t *in,
-    pk_vector_t *out);
+    const pk_matrix_t *in,
+    pk_matrix_t *out);
 
 // Initialize the Normalize layer
 POCKETKALDI_EXPORT
@@ -110,26 +103,8 @@ pk_nnet_layer_t *pk_nnet_layer_normalize_init(pk_nnet_layer_normalize_t *self);
 POCKETKALDI_EXPORT
 void pk_nnet_layer_normalize_propagate(
     const pk_nnet_layer_t *,
-    const pk_vector_t *in,
-    pk_vector_t *out);
-
-// Initialize the Add layer. It just copy from vector b, not own it.
-POCKETKALDI_EXPORT
-pk_nnet_layer_t *pk_nnet_layer_add_init(
-    pk_nnet_layer_add_t *self,
-    float scale,
-    const pk_vector_t *b);
-
-// Propagate through the Add layer
-POCKETKALDI_EXPORT
-void pk_nnet_layer_add_propagate(
-    const pk_nnet_layer_t *,
-    const pk_vector_t *in,
-    pk_vector_t *out);
-
-// Destroy the add layer. It just destroys b, and doesn't free the pointer self
-POCKETKALDI_EXPORT
-void pk_nnet_layer_add_destroy(pk_nnet_layer_t *self);
+    const pk_matrix_t *in,
+    pk_matrix_t *out);
 
 // Initialize the neural network
 POCKETKALDI_EXPORT
@@ -143,8 +118,8 @@ void pk_nnet_read(pk_nnet_t *self, pk_readable_t *fd, pk_status_t *status);
 POCKETKALDI_EXPORT
 void pk_nnet_propagate(
     const pk_nnet_t *self,
-    const pk_vector_t *in,
-    pk_vector_t *out);
+    const pk_matrix_t *in,
+    pk_matrix_t *out);
 
 // Destroy the nnet
 POCKETKALDI_EXPORT

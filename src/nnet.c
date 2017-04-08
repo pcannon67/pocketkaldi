@@ -16,11 +16,16 @@ void pk_nnet_layer_linear_destroy(pk_nnet_layer_t *self) {
 
 void pk_nnet_layer_linear_propagate(
     const pk_nnet_layer_t *self,
-    const pk_vector_t *in,
-    pk_vector_t *out) {
+    const pk_matrix_t *in,
+    pk_matrix_t *out) {
   pk_nnet_layer_linear_t *self_linear = (pk_nnet_layer_linear_t *)self;
-  pk_vector_dotmat(in, &self_linear->W, out);
-  pk_vector_add(out, &self_linear->b);
+  pk_matrix_resize(out, self_linear->W.ncol, in->ncol);
+  pk_matrix_matmat(&self_linear->W, in, out);
+  for (int col_idx = 0; col_idx < out->ncol; ++col_idx) {
+    pk_vector_t col = pk_matrix_getcol(out, col_idx);
+    pk_vector_add(&col, &self_linear->b);
+  }
+  
 }
 
 pk_nnet_layer_t *pk_nnet_layer_linear_init(
@@ -42,20 +47,26 @@ pk_nnet_layer_t *pk_nnet_layer_linear_init(
 
 void pk_nnet_layer_softmax_propagate(
     const pk_nnet_layer_t *self,
-    const pk_vector_t *in,
-    pk_vector_t *out) {
+    const pk_matrix_t *in,
+    pk_matrix_t *out) {
   PK_UNUSED(self);
 
-  pk_vector_resize(out, in->dim);
-  float sum = 0.0f;
-  for (int i = 0; i < in->dim; ++i) {
-    float exp_d = expf(in->data[i]);
-    out->data[i] = exp_d;
-    sum += exp_d;
+  pk_matrix_resize(out, in->nrow, in->ncol);
+  for (int col_idx = 0; col_idx < in->ncol; ++col_idx) {
+    pk_vector_t col_in = pk_matrix_getcol(in, col_idx);
+    pk_vector_t col_out = pk_matrix_getcol(out, col_idx);
+
+    float sum = 0.0f;
+    for (int i = 0; i < col_in.dim; ++i) {
+      float exp_d = expf(col_in.data[i]);
+      col_out.data[i] = exp_d;
+      sum += exp_d;
+    }
+    for (int i = 0; i < col_out.dim; ++i) {
+      col_out.data[i] /= sum;
+    }
   }
-  for (int i = 0; i < out->dim; ++i) {
-    out->data[i] /= sum;
-  }
+
 }
 
 pk_nnet_layer_t *pk_nnet_layer_softmax_init(pk_nnet_layer_softmax_t *self) {
@@ -67,14 +78,18 @@ pk_nnet_layer_t *pk_nnet_layer_softmax_init(pk_nnet_layer_softmax_t *self) {
 
 void pk_nnet_layer_relu_propagate(
     const pk_nnet_layer_t *self,
-    const pk_vector_t *in,
-    pk_vector_t *out) {
+    const pk_matrix_t *in,
+    pk_matrix_t *out) {
   PK_UNUSED(self);
 
-  pk_vector_resize(out, in->dim);
-  float sum = 0.0f;
-  for (int i = 0; i < in->dim; ++i) {
-    out->data[i] = in->data[i] > 0.0f ? in->data[i] : 0.0f;
+  pk_matrix_resize(out, in->nrow, in->ncol);
+  for (int col_idx = 0; col_idx < in->ncol; ++col_idx) {
+    pk_vector_t col_in = pk_matrix_getcol(in, col_idx);
+    pk_vector_t col_out = pk_matrix_getcol(out, col_idx);
+
+    for (int i = 0; i < col_in.dim; ++i) {
+      col_out.data[i] = col_in.data[i] > 0.0f ? col_in.data[i] : 0.0f;
+    }
   }
 }
 
@@ -87,19 +102,24 @@ pk_nnet_layer_t *pk_nnet_layer_relu_init(pk_nnet_layer_relu_t *self) {
 
 void pk_nnet_layer_normalize_propagate(
     const pk_nnet_layer_t *self,
-    const pk_vector_t *in,
-    pk_vector_t *out) {
+    const pk_matrix_t *in,
+    pk_matrix_t *out) {
   PK_UNUSED(self);
-  float D = in->dim;
+  float D = in->nrow;
 
-  pk_vector_resize(out, in->dim);
-  double squared_sum = 0.0;
-  for (int i = 0; i < in->dim; ++i) {
-    squared_sum += in->data[i] * in->data[i];
-  }
-  float scale = (float)sqrt(D / squared_sum);
-  for (int i = 0; i < in->dim; ++i) {
-    out->data[i] = in->data[i] * scale;
+  pk_matrix_resize(out, in->nrow, in->ncol);
+  for (int col_idx = 0; col_idx < in->ncol; ++col_idx) {
+    pk_vector_t col_in = pk_matrix_getcol(in, col_idx);
+    pk_vector_t col_out = pk_matrix_getcol(out, col_idx);
+
+    double squared_sum = 0.0;
+    for (int i = 0; i < col_in.dim; ++i) {
+      squared_sum += col_in.data[i] * col_in.data[i];
+    }
+    float scale = (float)sqrt(D / squared_sum);
+    for (int i = 0; i < col_in.dim; ++i) {
+      col_out.data[i] = col_in.data[i] * scale;
+    }
   }
 }
 
@@ -108,42 +128,6 @@ pk_nnet_layer_t *pk_nnet_layer_normalize_init(pk_nnet_layer_normalize_t *self) {
   self->base.propagate = &pk_nnet_layer_normalize_propagate;
 
   return (pk_nnet_layer_t *)self;
-}
-
-void pk_nnet_layer_add_propagate(
-    const pk_nnet_layer_t *self,
-    const pk_vector_t *in,
-    pk_vector_t *out) {
-  pk_nnet_layer_add_t *add_layer = (pk_nnet_layer_add_t *)self;
-  assert(in->dim == add_layer->b.dim && "add_layer: vector size mismatch");
-
-  pk_vector_resize(out, in->dim);
-  for (int i = 0; i < in-> dim; ++i) {
-    out->data[i] = in->data[i] + add_layer->scale * add_layer->b.data[i];
-  }
-}
-
-void pk_nnet_layer_add_destroy(pk_nnet_layer_t *self) {
-  pk_nnet_layer_add_t *add_layer = (pk_nnet_layer_add_t *)self;
-
-  pk_vector_destroy(&add_layer->b);
-  add_layer->base.propagate = NULL;
-  add_layer->base.destroy = NULL;
-  add_layer->scale = 0.0f;
-}
-
-pk_nnet_layer_t *pk_nnet_layer_add_init(
-    pk_nnet_layer_add_t *self,
-    float scale,
-    const pk_vector_t *b) {
-  self->base.destroy = &pk_nnet_layer_add_destroy;
-  self->base.propagate = &pk_nnet_layer_add_propagate;
-
-  // Copy and initialize b
-  pk_vector_init(&self->b, 0, NAN);
-  pk_vector_copy(&self->b, b);
-
-  self->scale = scale;
 }
 
 void pk_nnet_init(pk_nnet_t *self) {
@@ -192,7 +176,6 @@ static pk_nnet_layer_t *read_layer(pk_readable_t *fd, pk_status_t *status) {
   pk_nnet_layer_relu_t *relu_layer = NULL;
   pk_nnet_layer_normalize_t *norm_layer = NULL;
   pk_nnet_layer_softmax_t *softmax_layer = NULL;
-  pk_nnet_layer_add_t *add_layer = NULL;
   float scale = 0.0f;
   switch (layer_type) {
   case PK_NNET_LINEAR_LAYER:
@@ -220,15 +203,6 @@ static pk_nnet_layer_t *read_layer(pk_readable_t *fd, pk_status_t *status) {
     softmax_layer = (pk_nnet_layer_softmax_t *)malloc(
         sizeof(pk_nnet_layer_softmax_t));
     layer = pk_nnet_layer_softmax_init(softmax_layer);
-    break;
-  case PK_NNET_ADD_LAYER:
-    scale = pk_bytebuffer_readfloat(&bytebuffer);
-    pk_vector_read(&b, fd, status);
-    if (!status->ok) goto read_layer_failed;
-
-    add_layer = (pk_nnet_layer_add_t *)malloc(
-        sizeof(pk_nnet_layer_add_t));
-    layer = pk_nnet_layer_add_init(add_layer, scale, &b);
     break;
   default:
     PK_STATUS_CORRUPTED(
@@ -297,18 +271,18 @@ pk_nnet_read_failed:
 
 void pk_nnet_propagate(
     const pk_nnet_t *self,
-    const pk_vector_t *in,
-    pk_vector_t *out) {
-  pk_vector_t *x = NULL,
+    const pk_matrix_t *in,
+    pk_matrix_t *out) {
+  pk_matrix_t *x = NULL,
               *y = NULL,
               *t = NULL,
               forward_data[2];
-  pk_vector_init(&forward_data[0], 0, NAN);
-  pk_vector_init(&forward_data[1], 0, NAN);
+  pk_matrix_init(&forward_data[0], 0, 0);
+  pk_matrix_init(&forward_data[1], 0, 0);
   x = &forward_data[0];
   y = &forward_data[1];
 
-  pk_vector_copy(x, in);
+  pk_matrix_copy(x, in);
   for (int layer_idx = 0; layer_idx < self->num_layers; ++layer_idx) {
     self->layers[layer_idx]->propagate(self->layers[layer_idx], x, y);
 
@@ -318,9 +292,9 @@ void pk_nnet_propagate(
     y = t;
   }
 
-  pk_vector_copy(out, x);
-  pk_vector_destroy(&forward_data[0]);
-  pk_vector_destroy(&forward_data[1]);
+  pk_matrix_copy(out, x);
+  pk_matrix_destroy(&forward_data[0]);
+  pk_matrix_destroy(&forward_data[1]);
 }
 
 void pk_nnet_destroy(pk_nnet_t *self) {

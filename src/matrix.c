@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <cblas.h>
 #include "util.h"
 
 void pk_matrix_init(pk_matrix_t *self, int nrow, int ncol) {
@@ -86,6 +87,37 @@ void pk_matrix_resize(pk_matrix_t *self, int nrow, int ncol) {
     free(self->data);
     self->data = NULL;
   }
+}
+
+// Scale the elements of matrix
+POCKETKALDI_EXPORT
+void pk_matrix_scale(pk_matrix_t *self, float scale) {
+  for (int d = 0; d < self->ncol * self->nrow; ++d) {
+    self->data[d] *= scale;
+  }
+}
+
+void pk_matrix_matmat(
+    const pk_matrix_t *A,
+    const pk_matrix_t *B,
+    pk_matrix_t *C) {
+  assert(A->nrow == B->nrow && A->ncol == C->nrow && B->ncol == C->ncol &&
+         "pk_matrix_matmat: matrix shape mismatch");
+  cblas_sgemm(
+      CblasColMajor,
+      CblasTrans,
+      CblasNoTrans,
+      A->ncol,
+      B->ncol,
+      A->nrow,
+      1.0,
+      A->data,
+      A->nrow,
+      B->data,
+      B->nrow,
+      0.0,
+      C->data,
+      C->nrow);
 }
 
 void pk_matrix_copy(pk_matrix_t *dest, const pk_matrix_t *src) {

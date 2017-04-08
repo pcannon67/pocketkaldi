@@ -34,6 +34,13 @@ void pk_matrix_read(pk_matrix_t *self, pk_readable_t *fd, pk_status_t *status);
 POCKETKALDI_EXPORT
 void pk_matrix_fill(pk_matrix_t *self, float val);
 
+// Multiplies two matrices C <- A^T dot B
+POCKETKALDI_EXPORT
+void pk_matrix_matmat(
+    const pk_matrix_t *A,
+    const pk_matrix_t *B,
+    pk_matrix_t *C);
+
 // Resize the matrix
 POCKETKALDI_EXPORT
 void pk_matrix_resize(pk_matrix_t *self, int nrow, int ncol);
@@ -41,6 +48,10 @@ void pk_matrix_resize(pk_matrix_t *self, int nrow, int ncol);
 // Copy the matrix from src to dest
 POCKETKALDI_EXPORT
 void pk_matrix_copy(pk_matrix_t *dest, const pk_matrix_t *src);
+
+// Scale the elements of matrix
+POCKETKALDI_EXPORT
+void pk_matrix_scale(pk_matrix_t *self, float scale);
 
 // Destroy the matrix
 POCKETKALDI_EXPORT

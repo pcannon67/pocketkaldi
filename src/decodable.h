@@ -8,6 +8,7 @@
 #include <assert.h>
 #include "am.h"
 #include "transition.h"
+#include "matrix.h"
 
 // Used in decoder
 typedef struct pk_decodable_t {

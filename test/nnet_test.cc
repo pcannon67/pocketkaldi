@@ -44,18 +44,18 @@ void TestLinearLayer() {
   // Propagation
   // Vector x
   //   0.3 -0.1 0.9
-  pk_vector_t x;
-  pk_vector_t y;
-  pk_vector_init(&x, 3, NAN);
-  pk_vector_init(&y, 0, NAN);
+  pk_matrix_t x;
+  pk_matrix_t y;
+  pk_matrix_init(&x, 3, 1);
+  pk_matrix_init(&y, 0, 0);
   float x_data[] = {0.3, -0.1, 0.9};
-  for (int d = 0; d < x.dim; ++d) {
+  for (int d = 0; d < x.nrow * x.ncol; ++d) {
     x.data[d] = x_data[d];
   }
   layer->propagate(layer, &x, &y);
 
   // Check results
-  assert(y.dim == 4);
+  assert(y.nrow == 4 && y.ncol == 1);
   assert(CheckEq(y.data[0], 0.86f));
   assert(CheckEq(y.data[1], 0.63f));
   assert(CheckEq(y.data[2], 0.34f));
@@ -63,8 +63,8 @@ void TestLinearLayer() {
 
   // Destory
   layer->destroy(layer);
-  pk_vector_destroy(&x);
-  pk_vector_destroy(&y);
+  pk_matrix_destroy(&x);
+  pk_matrix_destroy(&y);
   pk_vector_destroy(&b);
   pk_matrix_destroy(&W);
 }
@@ -76,18 +76,19 @@ void TestSoftmaxLayer() {
   pk_nnet_layer_t *layer = pk_nnet_layer_softmax_init(&softmax);
 
   // Propagation
-  pk_vector_t x;
-  pk_vector_t y;
-  pk_vector_init(&x, 4, NAN);
-  pk_vector_init(&y, 0, NAN);
+  pk_matrix_t x;
+  pk_matrix_t y;
+  pk_matrix_init(&x, 4, 1);
+  pk_matrix_init(&y, 0, 0);
   float x_data[] = {0.3, -0.1, 0.9, 0.2};
-  for (int d = 0; d < x.dim; ++d) {
+  for (int d = 0; d < x.nrow * x.ncol; ++d) {
     x.data[d] = x_data[d];
   }
   layer->propagate(layer, &x, &y);
 
   // Check results
-  assert(y.dim == 4);
+  assert(y.nrow == 4);
+  assert(y.ncol == 1);
   assert(CheckEq(y.data[0], 0.2274135f));
   assert(CheckEq(y.data[1], 0.15243983f));
   assert(CheckEq(y.data[2], 0.41437442f));
@@ -95,8 +96,8 @@ void TestSoftmaxLayer() {
 
   // Destory
   if (layer->destroy) layer->destroy(layer);
-  pk_vector_destroy(&x);
-  pk_vector_destroy(&y);
+  pk_matrix_destroy(&x);
+  pk_matrix_destroy(&y);
 }
 
 void TestReLULayer() {
@@ -105,18 +106,19 @@ void TestReLULayer() {
   pk_nnet_layer_t *layer = pk_nnet_layer_relu_init(&relu);
 
   // Propagation
-  pk_vector_t x;
-  pk_vector_t y;
-  pk_vector_init(&x, 4, NAN);
-  pk_vector_init(&y, 0, NAN);
+  pk_matrix_t x;
+  pk_matrix_t y;
+  pk_matrix_init(&x, 4, 1);
+  pk_matrix_init(&y, 0, 0);
   float x_data[] = {0.3, -0.1, 0.9, 0.2};
-  for (int d = 0; d < x.dim; ++d) {
+  for (int d = 0; d < x.nrow * x.ncol; ++d) {
     x.data[d] = x_data[d];
   }
   layer->propagate(layer, &x, &y);
 
   // Check results
-  assert(y.dim == 4);
+  assert(y.nrow == 4);
+  assert(y.ncol == 1);
   assert(CheckEq(y.data[0], 0.3f));
   assert(CheckEq(y.data[1], 0.0f));
   assert(CheckEq(y.data[2], 0.9f));
@@ -124,8 +126,8 @@ void TestReLULayer() {
 
   // Destory
   if (layer->destroy) layer->destroy(layer);
-  pk_vector_destroy(&x);
-  pk_vector_destroy(&y);
+  pk_matrix_destroy(&x);
+  pk_matrix_destroy(&y);
 }
 
 void TestNormalizeLayer() {
@@ -134,27 +136,27 @@ void TestNormalizeLayer() {
   pk_nnet_layer_t *layer = pk_nnet_layer_normalize_init(&normalize);
 
   // Propagation
-  pk_vector_t x;
-  pk_vector_t y;
-  pk_vector_init(&x, 4, NAN);
-  pk_vector_init(&y, 0, NAN);
+  pk_matrix_t x;
+  pk_matrix_t y;
+  pk_matrix_init(&x, 4, 1);
+  pk_matrix_init(&y, 0, 0);
   float x_data[] = {0.3, -0.1, 0.9, 0.2};
-  for (int d = 0; d < x.dim; ++d) {
+  for (int d = 0; d < x.nrow * x.ncol; ++d) {
     x.data[d] = x_data[d];
   }
   layer->propagate(layer, &x, &y);
 
   // Check results
   double sum = 0.0;
-  for (int d = 0; d < y.dim; ++d) {
+  for (int d = 0; d < 4; ++d) {
     sum += y.data[d] * y.data[d];
   }
   assert(fabs(sum - 4.0) < 0.0001);
 
   // Destory
   if (layer->destroy) layer->destroy(layer);
-  pk_vector_destroy(&x);
-  pk_vector_destroy(&y);
+  pk_matrix_destroy(&x);
+  pk_matrix_destroy(&y);
 }
 
 int main() {

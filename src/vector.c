@@ -2,6 +2,7 @@
 #include "vector.h"
 
 #include <math.h>
+#include <cblas.h>
 
 void pk_vector_init(pk_vector_t *self, int dim, float fill_with) {
   self->dim = dim;
@@ -69,17 +70,22 @@ float pk_vector_dotmat(
     const pk_matrix_t *W,
     pk_vector_t *out) {
   assert(self->dim == W->nrow && "pk_vector_dotmat: x and W size mismatch");
-  
-  int nrow = W->nrow;
-  int ncol = W->ncol;
-  pk_vector_resize(out, ncol);
-  for (int c = 0; c < ncol; ++c) {
-    float sum = 0.0f;
-    for (int d = 0; d < nrow; ++d) {
-      sum += self->data[d] * W->data[c * nrow + d];
-    }
-    out->data[c] = sum;
-  }
+  pk_vector_resize(out, W->ncol);
+  cblas_sgemm(
+      CblasColMajor,
+      CblasNoTrans,
+      CblasNoTrans,
+      1,
+      W->ncol,
+      self->dim,
+      1.0,
+      self->data,
+      1,
+      W->data,
+      W->nrow,
+      0.0,
+      out->data,
+      1);
 }
 
 void pk_vector_add(const pk_vector_t *self, const pk_vector_t *vec) {

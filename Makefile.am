@@ -2,7 +2,8 @@ ACLOCAL_AMFLAGS = -I m4
 AUTOMAKE_OPTIONS = gnu subdir-objects foreign
 AM_CFLAGS = -std=c99
 AM_CXXFLAGS = -I$(top_srcdir)/../kaldi/src -I$(top_srcdir)/../kaldi/tools/openfst/src/include/ -I$(top_srcdir)/../kaldi/tools/ATLAS/include/ -I$(top_srcdir)/src -g -fPIC -std=c++11
-AM_LDFLAGS = -pthread -ldl -L/usr/local/cuda-8.0/lib64/
+AM_LDFLAGS = -pthread -L/usr/local/cuda-8.0/lib64/
+LIBS = -ldl -lm -lblas
 
 bin_PROGRAMS = pocketkaldi
 pocketkaldi_SOURCES = src/main.c 
@@ -27,7 +28,7 @@ libpocketkaldi_a_SOURCES = src/hashlist.c \
                            src/pocketkaldi.c \
                            src/introspect.c 
 
-pocketkaldi_LDADD = libpocketkaldi.a -lm
+pocketkaldi_LDADD = libpocketkaldi.a 
 
 if ENABLE_TOOLS
     bin_PROGRAMS += compute_fbank extract_id2pdf
