@@ -26,7 +26,8 @@ libpocketkaldi_a_SOURCES = src/hashlist.c \
                            src/decodable.c \
                            src/symbol_table.c \
                            src/pocketkaldi.c \
-                           src/introspect.c 
+                           src/introspect.c  \
+                           src/hashtable.c
 
 pocketkaldi_LDADD = libpocketkaldi.a 
 
@@ -58,7 +59,8 @@ TESTS = hashlist_test \
         cmvn_test \
         nnet_test \
         symbol_table_test \
-        introspect_test
+        introspect_test \
+        hashtable_test
 
 check_PROGRAMS = hashlist_test \
                  list_test \
@@ -68,11 +70,16 @@ check_PROGRAMS = hashlist_test \
                  cmvn_test \
                  nnet_test \
                  symbol_table_test \
-                 introspect_test
+                 introspect_test \
+                 hashtable_test
 
 hashlist_test_SOURCES = test/hashlist_test.cc
 hashlist_test_CXXFLAGS = $(AM_CXXFLAGS) -std=c++11 -I$(top_srcdir)/src
 hashlist_test_LDADD = libpocketkaldi.a
+
+hashtable_test_SOURCES = test/hashtable_test.cc
+hashtable_test_CXXFLAGS = $(AM_CXXFLAGS) -std=c++11 -I$(top_srcdir)/src
+hashtable_test_LDADD = libpocketkaldi.a
 
 list_test_SOURCES = test/list_test.cc
 list_test_CXXFLAGS = $(AM_CXXFLAGS) -std=c++11 -I$(top_srcdir)/src
