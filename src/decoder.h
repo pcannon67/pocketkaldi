@@ -25,7 +25,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <math.h>
-#include "hashlist.h"
 #include "transition.h"
 #include "decodable.h"
 #include "vector.h"

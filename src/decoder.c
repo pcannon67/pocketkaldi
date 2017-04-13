@@ -7,12 +7,19 @@
 #include "hashtable.h"
 
 #define OLABEL_BEGINIDX -1
+#define CUTOFF_SAMPLES 200
+#define CUTOFF_SAMPLESEED 0x322
 
+// olabel_t is the struct records the list of output labels of a tok in beam. 
+// prev_idx pointes to the previous olabel_t like a link list. And the prev_idx
+// of root node is OLABEL_BEGINIDX
 typedef struct olabel_t {
   int prev_idx;
   int olabel;
 } olabel_t;
 
+// token_t represents a state in the viterbi lattice. olabel_idx is the index
+// of its corresponded outpu label link-list in the list impl->olabels
 typedef struct token_t {
   int olabel_idx;
   int state;
@@ -21,8 +28,11 @@ typedef struct token_t {
 
 PKLIST_DEFINE(tok_t, toklist);
 PKLIST_DEFINE(olabel_t, olabellist);
+PKLIST_DEFINE(float, floatlist);
 PKLIST_DEFINE(int, intlist);
 
+// A frame in the viterbi lattice. toks is a list of states and tok_idx records
+// the mapping of state_id of WFST to index in toks
 typedef struct beam_t {
   toklist_t toks;
   pk_hashtable_t tok_idx;
@@ -31,6 +41,10 @@ typedef struct beam_t {
 typedef struct pk_decoder_impl_t {
   float original_adaptive_beam;
   olabellist_t olabels;
+
+  // Only used in get_cutoff()
+  floatlist_t costs;
+
   const pk_fst_t *fst;
   int32_t num_frames_decoded;
   beam_t beams[2];
@@ -54,18 +68,32 @@ static int float_cmp(const void *a, const void *b, void *thunk) {
   }
 }
 
-// Gets the weight cutoff.
+// Gets the weight cutoff. We won't go throuth all the toks in beam here to
+// calculate cutoff, Since it takes a long time. Instead, we randomly sample N
+// costs from the beam and GUESS the cutoff value.
 static double get_cutoff(
     pk_decoder_impl_t *self,
     toklist_t *toks,
     float *adaptive_beam,
     tok_t **best_tok) {
   double best_cost = INFINITY;
-  float *cost_array = (float *)malloc(sizeof(float) * toks->size);
+  floatlist_clear(&self->costs);
+  uint64_t next_random = CUTOFF_SAMPLESEED;
+
+  // Probability of sample a cost into self->costs
+  float sample_prob = CUTOFF_SAMPLES / (float)toks->size;
   
   for (int i = 0; i < toks->size; ++i) {
     tok_t *tok = toks->data + i;
-    cost_array[i] = tok->cost;
+
+    // Random sample costs from beam. To be consistant even in multi-thread
+    // environment, do don't use rand() here
+    next_random = next_random * (uint64_t)25214903917 + 11;
+    float random_f = (next_random & 0xffff) / (float)65535;
+    if (random_f < sample_prob) {
+      floatlist_push_back(&self->costs, tok->cost);
+    }
+
     if (tok->cost < best_cost) {
       best_cost = tok->cost;
       if (best_tok) *best_tok = tok;
@@ -76,15 +104,17 @@ static double get_cutoff(
   double max_active_cutoff = NAN;
   
   if (toks->size > PK_DECODER_BEAMSIZE) {
+    int cutoff_idx = self->costs.size * PK_DECODER_BEAMSIZE / toks->size;
+
     // The same as std::nth_element
     pk_introselect_r(
-        cost_array,
-        toks->size,
+        self->costs.data,
+        self->costs.size,
         sizeof(float),
-        PK_DECODER_BEAMSIZE,
+        cutoff_idx,
         float_cmp,
         NULL);
-    max_active_cutoff = cost_array[PK_DECODER_BEAMSIZE];
+    max_active_cutoff = self->costs.data[cutoff_idx];
   }
 
   if (max_active_cutoff < beam_cutoff) { // max_active is tighter than beam.
@@ -94,7 +124,6 @@ static double get_cutoff(
     *adaptive_beam = self->original_adaptive_beam;
   }
 
-  free(cost_array);
   return beam_cutoff;
 }
 
@@ -130,6 +159,11 @@ static bool insert_tok(
     float total_cost) {
   int next_state = arc->next_state;
   int tok_idx = pk_hashtable_find(&self->beam->tok_idx, next_state, -1);
+
+  // We must get the value of from_tok->olabel_idx here. Since the memory
+  // from_tok points to may be realloc-ed by the following
+  // toklist_emplace_back() call
+  int from_olabelidx = from_tok ? from_tok->olabel_idx : OLABEL_BEGINIDX;
   
   // Create the olabel for next tok when the output_label of arc
   // is not 0 (epsilon)
@@ -160,7 +194,7 @@ static bool insert_tok(
   if (olabel_idx != OLABEL_BEGINIDX) {
     next_tok->olabel_idx = olabel_idx;
   } else {
-    next_tok->olabel_idx = from_tok ? from_tok->olabel_idx : OLABEL_BEGINIDX;
+    next_tok->olabel_idx = from_tok ? from_olabelidx : OLABEL_BEGINIDX;
   }
 
   return true;
@@ -213,7 +247,8 @@ static float process_emitting(
     }
   }
   assert(next_weight_cutoff != INFINITY);
-
+  
+  int processed_tok = 0;
   toklist_t *prev_toks = &self->prev_beam->toks;
   for (int from_tokidx = 0; from_tokidx < prev_toks->size; ++from_tokidx) {
     tok_t from_tok = prev_toks->data[from_tokidx];
@@ -222,6 +257,7 @@ static float process_emitting(
     // weight_cutoff is computed according to beam size
     // So there are only top beam_size toks less than weight_cutoff
     if (from_tok.cost > weight_cutoff) continue;
+    ++processed_tok;
 
     pk_fst_iter_t arc_iter;
     pk_fst_iterate_arc(self->fst, state, &arc_iter);
@@ -268,24 +304,25 @@ static void process_nonemitting(pk_decoder_impl_t *self, double cutoff) {
     // Get tok by state
     int tok_idx = pk_hashtable_find(&self->beam->tok_idx, state, -1);
     assert(tok_idx >= 0);
-    tok_t from_tok = cur_toks->data[tok_idx];
-    assert(state == from_tok.state);
 
     pk_fst_iter_t arc_iter;
     pk_fst_iterate_arc(self->fst, state, &arc_iter);
     const pk_fst_arc_t *arc = NULL;
     while ((arc = pk_fst_iter_next(&arc_iter)) != NULL) {
       // propagate nonemitting only...
-      if (arc->input_label != 0) continue;   
+      if (arc->input_label != 0) continue;
 
       const float ac_cost = 0.0;
-      double total_cost = from_tok.cost + arc->weight + ac_cost;
+      const tok_t *from_tok = &cur_toks->data[tok_idx];
+      double total_cost = from_tok->cost + arc->weight + ac_cost;
       if (total_cost > cutoff) {
         continue;
       }
 
       // Create and insert tok into beam
-      bool inserted = insert_tok(self, arc, &from_tok, total_cost);
+      // If the token successfully inserted or updated in the beam, 
+      // inserted will be true and then we will push the new state into queue
+      bool inserted = insert_tok(self, arc, from_tok, total_cost);
       if (inserted) intlist_push_back(&queue, arc->next_state);
     }
   }
@@ -320,6 +357,7 @@ void pk_decoder_init(pk_decoder_t *self, const pk_fst_t *fst) {
       sizeof(pk_decoder_impl_t));
   impl->original_adaptive_beam = 16.0;
   olabellist_init(&impl->olabels);
+  floatlist_init(&impl->costs);
   impl->fst = fst;
   impl->num_frames_decoded = 0;
   beam_init(impl->beams);
@@ -332,6 +370,7 @@ void pk_decoder_init(pk_decoder_t *self, const pk_fst_t *fst) {
 void pk_decoder_destroy(pk_decoder_t *self) {
   pk_decoder_impl_t *impl = (pk_decoder_impl_t *)self->impl;
   olabellist_destroy(&impl->olabels);
+  floatlist_destroy(&impl->costs);
   beam_destroy(impl->beams);
   beam_destroy(impl->beams + 1);
   impl->beam = NULL;

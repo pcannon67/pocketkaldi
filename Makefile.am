@@ -9,8 +9,7 @@ bin_PROGRAMS = pocketkaldi
 pocketkaldi_SOURCES = src/main.c 
 
 lib_LIBRARIES = libpocketkaldi.a
-libpocketkaldi_a_SOURCES = src/hashlist.c \
-                           src/util.c \
+libpocketkaldi_a_SOURCES = src/util.c \
                            src/fst.c \
                            src/matrix.c \
                            src/pcm_reader.c \

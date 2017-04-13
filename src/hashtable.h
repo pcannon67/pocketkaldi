@@ -1,4 +1,5 @@
-// Created at 2017-04-10
+// hashlist.c --- Created at 2016-11-08
+// hashtable.c ---  Created at 2017-04-10
 
 #ifndef POCKETKALDI_HASHTABLE_H_
 #define POCKETKALDI_HASHTABLE_H_

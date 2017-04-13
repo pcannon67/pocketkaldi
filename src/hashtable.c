@@ -1,4 +1,5 @@
-// Created at 2017-04-10
+// hashlist.c --- Created at 2016-11-08
+// hashtable.c ---  Created at 2017-04-10
 
 #include "hashtable.h"
 
@@ -65,7 +66,6 @@ static void init_buckets(
     pk_hashtable_bucket_t *buckets,
     bool *is_empty,
     int bucket_size) {
-  memset(buckets, 0, sizeof(pk_hashtable_bucket_t) * bucket_size);
   for (int i = 0; i < bucket_size; ++i) {
     is_empty[i] = true;
   }
