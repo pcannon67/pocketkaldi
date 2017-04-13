@@ -187,7 +187,7 @@ void pk_process(pk_t *recognizer, pk_utterance_t *utt) {
 
   // Start to decode
   pk_decoder_t decoder;
-  pk_decoder_init(&decoder, recognizer->fst, 16.0f);
+  pk_decoder_init(&decoder, recognizer->fst);
   pk_decodable_t decodable;
   t = clock();
   pk_decodable_init(
@@ -207,7 +207,7 @@ void pk_process(pk_t *recognizer, pk_utterance_t *utt) {
   byte_list_init(&hyp);
   pk_decoder_result_init(&best_path);
   if (pk_decoder_reachedfinal(&decoder) &&
-      pk_decoder_bestpath(&decoder, &best_path, true) &&
+      pk_decoder_bestpath(&decoder, &best_path) &&
       best_path.size > 0) {
     for (int idx = 0; idx < best_path.size; ++idx) {
       int word_id = best_path.words[idx];
