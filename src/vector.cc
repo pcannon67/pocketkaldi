@@ -65,29 +65,6 @@ float pk_vector_dot(const pk_vector_t *self, const pk_vector_t *vec) {
   return sum;
 }
 
-float pk_vector_dotmat(
-    const pk_vector_t *self, 
-    const pk_matrix_t *W,
-    pk_vector_t *out) {
-  assert(self->dim == W->nrow && "pk_vector_dotmat: x and W size mismatch");
-  pk_vector_resize(out, W->ncol);
-  cblas_sgemm(
-      CblasColMajor,
-      CblasNoTrans,
-      CblasNoTrans,
-      1,
-      W->ncol,
-      self->dim,
-      1.0,
-      self->data,
-      1,
-      W->data,
-      W->nrow,
-      0.0,
-      out->data,
-      1);
-}
-
 void pk_vector_add(const pk_vector_t *self, const pk_vector_t *vec) {
   assert(self->dim == vec->dim && "pk_vector_add: vector size mismatch");
 
@@ -153,7 +130,7 @@ void pk_vector_resize(pk_vector_t *self, int dim) {
     self->data = NULL;
     self->dim = 0;
   } else {
-    self->data = pk_realloc(self->data, sizeof(float) * dim);
+    self->data = (float *)pk_realloc(self->data, sizeof(float) * dim);
     self->dim = dim;
   }
 }

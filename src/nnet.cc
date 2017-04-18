@@ -139,7 +139,15 @@ void pk_nnet_init(pk_nnet_t *self) {
 // pointer, it should call pointer->destroy(pointer) first when pointer != NULL.
 // Then call free to free it. When failed, status->ok == false
 static pk_nnet_layer_t *read_layer(pk_readable_t *fd, pk_status_t *status) {
+  pk_nnet_layer_linear_t *linear_layer = NULL;
+  pk_nnet_layer_relu_t *relu_layer = NULL;
+  pk_nnet_layer_normalize_t *norm_layer = NULL;
+  pk_nnet_layer_softmax_t *softmax_layer = NULL;
   pk_nnet_layer_t *layer = NULL;
+  float scale;
+  int layer_type;
+  int expected_size;
+
   pk_bytebuffer_t bytebuffer;
   pk_matrix_t W;
   pk_vector_t b;
@@ -156,10 +164,10 @@ static pk_nnet_layer_t *read_layer(pk_readable_t *fd, pk_status_t *status) {
 
   pk_readable_readbuffer(fd, &bytebuffer, status);
   if (!status->ok) goto read_layer_failed;
-  int layer_type = pk_bytebuffer_readint32(&bytebuffer);
+  layer_type = pk_bytebuffer_readint32(&bytebuffer);
 
   // Check size of this section
-  int expected_size = 4;
+  expected_size = 4;
   if (layer_type == PK_NNET_ADD_LAYER) expected_size = 8;
   if (expected_size != section_size) {
     PK_STATUS_CORRUPTED(
@@ -172,11 +180,7 @@ static pk_nnet_layer_t *read_layer(pk_readable_t *fd, pk_status_t *status) {
   }
 
   // Read additional parameters and initialize layer
-  pk_nnet_layer_linear_t *linear_layer = NULL;
-  pk_nnet_layer_relu_t *relu_layer = NULL;
-  pk_nnet_layer_normalize_t *norm_layer = NULL;
-  pk_nnet_layer_softmax_t *softmax_layer = NULL;
-  float scale = 0.0f;
+  scale = 0.0f;
   switch (layer_type) {
   case PK_NNET_LINEAR_LAYER:
     pk_matrix_read(&W, fd, status);
@@ -232,6 +236,8 @@ read_layer_failed:
 }
 
 void pk_nnet_read(pk_nnet_t *self, pk_readable_t *fd, pk_status_t *status) {
+  int num_layers;
+  
   pk_bytebuffer_t bytebuffer;
   pk_bytebuffer_init(&bytebuffer);
 
@@ -244,7 +250,7 @@ void pk_nnet_read(pk_nnet_t *self, pk_readable_t *fd, pk_status_t *status) {
 
   pk_readable_readbuffer(fd, &bytebuffer, status);
   if (!status->ok) goto pk_nnet_read_failed;
-  int num_layers = pk_bytebuffer_readint32(&bytebuffer);
+  num_layers = pk_bytebuffer_readint32(&bytebuffer);
 
   // Initialize the layer pointers
   self->layers = (pk_nnet_layer_t **)malloc(

@@ -25,54 +25,157 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <math.h>
+#include <vector>
+#include <unordered_map>
+#include <unordered_map>
 #include "transition.h"
 #include "decodable.h"
+#include "hashtable.h"
 #include "vector.h"
 #include "fst.h"
 #include "am.h"
 
-#define PK_DECODER_BEAMSIZE 30000
-#define PK_DECODER_BEAMDELTA 0.5
+namespace pocketkaldi {
 
-typedef struct {
-  int32_t *words;
-  int32_t size;
-  float weight;
-} pk_decoder_result_t;
+// Decoder is the core class in pocketkaldi. It decodes the Decodable object
+// using viterbi algorithm and stores the best result into Decoder::Hypothesis
+// class
+class Decoder {
+ public:
+  static constexpr int kBeamSize = 30000;
+  static constexpr float kBeamDelta = 0.5;
+  static constexpr int kOLabelBeginIdx = -1;
+  static constexpr int kNotExist = -1;
+  static constexpr int kCutoffSamples = 200;
+  static constexpr int kCutoffRandSeed = 0x322;
 
-// Initialize the pk_decoder_result_t
-POCKETKALDI_EXPORT
-void pk_decoder_result_init(pk_decoder_result_t *self);
+  // Stores the decoding result
+  class Hypothesis;
 
-// Destroy the pk_decoder_result_t.
-POCKETKALDI_EXPORT
-void pk_decoder_result_destroy(pk_decoder_result_t *best_path);
+  // Initialize the decoder with the FST graph fst. It just borrows the pointer
+  // of fst and not own it.
+  Decoder(const pk_fst_t *fst);
+  ~Decoder();
 
-typedef struct pk_decoder_impl_t pk_decoder_impl_t;
-typedef struct pk_decoder_t {
-  pk_decoder_impl_t *impl;
-} pk_decoder_t;
+  // Decodes the Decodable object, the best path could be obtain by
+  // Decoder::BestPath()
+  bool Decode(pk_decodable_t *decodable);
 
-// Initialize the decoder. It just borrows the fst
-POCKETKALDI_EXPORT
-void pk_decoder_init(pk_decoder_t *self, const pk_fst_t *fst);
+  // Return true if reached the final state
+  bool ReachedFinal();
 
-// Destroy the decoder
-POCKETKALDI_EXPORT
-void pk_decoder_destroy(pk_decoder_t *self);
+  // Get best hypothesis from lattice.
+  Hypothesis BestPath();
 
-// Decode given decoable object
-POCKETKALDI_EXPORT
-bool pk_decoder_decode(pk_decoder_t *self, pk_decodable_t *decodable);
+ private:
+  // token_t represents a state in the viterbi lattice. olabel_idx is the index
+  // of its corresponded outpu label link-list in the list impl->olabels
+  class Token {
+   public:
+    Token(int state, float cost, int olabel_idx);
 
-// Check if it reached the final state
-POCKETKALDI_EXPORT
-bool pk_decoder_reachedfinal(pk_decoder_t *self);
+    // The state in FST
+    int state() const { return state_; }
 
-// Outputs best_path corresponding to the single best path through the lattice.
-POCKETKALDI_EXPORT
-bool pk_decoder_bestpath(
-    pk_decoder_t *self,
-    pk_decoder_result_t *best_path);
+    // Current cost
+    float cost() const { return cost_; }
+
+    // Index of olabel in Decoder::olabels_
+    int olabel_idx() const { return olabel_idx_; }
+
+   private:
+    int state_;
+    float cost_;
+    int olabel_idx_;
+  };
+
+  // OLabel is the struct records the list of output labels of a tok in beam. 
+  // prev_idx pointes to the previous OLabel like a link list. And the
+  // prev_idx of root node is OLABEL_BEGINIDX
+  class OLabel {
+   public:
+    OLabel(int prev_idx, int olabel);
+
+    // Index of previous olabel
+    int prev_idx() const { return prev_idx_; }
+
+    // Output label of current node
+    int olabel() const { return olabel_; }
+
+   private:
+    int prev_idx_;
+    int olabel_;
+  };
+
+  // Get the weight cutoff from prev_toks_. We won't go throuth all the toks in
+  // beam here to calculate cutoff, Since it takes a long time. Instead, we
+  // randomly sample N costs from the beam and GUESS the cutoff value.
+  // \param adaptive_beam the gap of cost between best token and the token of
+  // beam_size
+  // \param best_tokidx index of best token in prev_toks_
+  // \return the cutoff of cost to beam size in prev_toks_
+  double GetCutoff(float *adaptive_beam, int *best_tokidx);
+
+  // Initialize decoding and put the root state into beam
+  void InitDecoding();
+
+  // Insert tok into self->toks_. The tok is created according to arc. And it
+  // will either insert a new token or update existing token in the beam.
+  // \param olabel_idx the olabel-index of previous token in viterbi
+  // \param cost the cost of new token
+  // \return true if successfully inserted. Otherwise, when the cost of
+  // existing tok is less than new one, return false
+  bool InsertTok(const pk_fst_arc_t *arc, int olabel_idx, float cost);
+
+  // Processes nonemitting arcs for one frame. Propagates within cur_toks_.
+  void ProcessNonemitting(double cutoff);
+
+  // Process the emitting (non-epsilon) arcs of each states in the beam
+  // \return cutoff of next weight
+  float ProcessEmitting(pk_decodable_t *decodable);
+
+  // Only used in get_cutoff()
+  std::vector<float> costs_;
+
+  // FST graph used for decoding
+  const pk_fst_t *fst_;
+
+  // Frames decoded
+  int num_frames_decoded_;
+
+  // Tokens used in decoding. toks_ is the current beam, all generated tokens
+  // will be placed here. And after frame advanced, the toks_ will be swapped
+  // with prev_toks_
+  std::vector<Token> toks_;
+  std::vector<Token> prev_toks_;
+
+  // Stores the map between state-id and the index of corresponded token in
+  // toks_
+  pk_hashtable_t state_idx_;
+
+  // Storea all output-label nodes
+  std::vector<OLabel> olabels_;
+
+  // Beam threshold
+  float beam_;
+};
+
+// Stores the decoding result
+class Decoder::Hypothesis {
+ public:
+  Hypothesis(const std::vector<int> &words, float weight);
+
+  // Word-ids in the decoding result
+  const std::vector<int> &words() const { return words_; }
+
+  // Weight for this utterance
+  float weight() const { return weight_; }
+
+ private:
+  std::vector<int> words_;  
+  float weight_;
+};
+
+}  // namespace pocketkaldi
 
 #endif  // POCKETKALDI_DECODER_H_

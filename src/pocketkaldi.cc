@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <math.h>
 #include <time.h>
+#include <algorithm>
+#include <string>
 #include "am.h"
 #include "cmvn.h"
 #include "decodable.h"
@@ -16,6 +18,8 @@
 #include "symbol_table.h"
 #include "transition.h"
 #include "pcm_reader.h"
+
+using pocketkaldi::Decoder;
 
 PKLIST_DEFINE(char, byte_list)
 
@@ -186,8 +190,7 @@ void pk_process(pk_t *recognizer, pk_utterance_t *utt) {
   fprintf(stderr, "CMVN: %lfms\n", ((float)t) / CLOCKS_PER_SEC  * 1000);
 
   // Start to decode
-  pk_decoder_t decoder;
-  pk_decoder_init(&decoder, recognizer->fst);
+  Decoder decoder(recognizer->fst);
   pk_decodable_t decodable;
   t = clock();
   pk_decodable_init(
@@ -199,35 +202,26 @@ void pk_process(pk_t *recognizer, pk_utterance_t *utt) {
   t = clock() - t;
   fprintf(stderr, "NNET: %lfms\n", ((float)t) / CLOCKS_PER_SEC  * 1000);
   
-  pk_decoder_decode(&decoder, &decodable);
+  // Decoding
+  decoder.Decode(&decodable);
+  Decoder::Hypothesis hyp = decoder.BestPath();
 
   // Get final result
-  pk_decoder_result_t best_path;
-  byte_list_t hyp;
-  byte_list_init(&hyp);
-  pk_decoder_result_init(&best_path);
-  if (pk_decoder_reachedfinal(&decoder) &&
-      pk_decoder_bestpath(&decoder, &best_path) &&
-      best_path.size > 0) {
-    for (int idx = 0; idx < best_path.size; ++idx) {
-      int word_id = best_path.words[idx];
-
+  std::string hyp_text;
+  std::vector<int> words = hyp.words();
+  std::reverse(words.begin(), words.end());
+  if (!hyp.words().empty()) {
+    for (int word_id : words) {
       // Append the word into hyp
       const char *word = pk_symboltable_get(recognizer->symbol_table, word_id);
-      while (*word) {
-        byte_list_push_back(&hyp, *word);
-        ++word;
-      }
-      byte_list_push_back(&hyp, ' ');
+      hyp_text += word;
+      hyp_text += ' ';
     }
 
-    // Change last whitespace into '\0'
-    hyp.data[hyp.size - 1] = '\0';
-
     // Copy hyp to utt->hyp
-    utt->hyp = (char *)malloc(sizeof(char) * hyp.size);
-    pk_strlcpy(utt->hyp, hyp.data, hyp.size);
-    utt->loglikelihood_per_frame = best_path.weight / feats.ncol;
+    utt->hyp = (char *)malloc(sizeof(char) * hyp_text.size());
+    pk_strlcpy(utt->hyp, hyp_text.data(), hyp_text.size());
+    utt->loglikelihood_per_frame = hyp.weight() / feats.ncol;
   } else {
     utt->hyp = (char *)malloc(sizeof(char));
     *(utt->hyp) = '\0';
@@ -236,8 +230,5 @@ void pk_process(pk_t *recognizer, pk_utterance_t *utt) {
   pk_matrix_destroy(&raw_feats);
   pk_cmvn_destroy(&cmvn);
   pk_matrix_destroy(&feats);
-  pk_decoder_destroy(&decoder);
   pk_decodable_destroy(&decodable);
-  pk_decoder_result_destroy(&best_path);
-  byte_list_destroy(&hyp);
 }

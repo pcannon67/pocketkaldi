@@ -6,29 +6,29 @@ AM_LDFLAGS = -pthread -L/usr/local/cuda-8.0/lib64/
 LIBS = -ldl -lm -lblas
 
 bin_PROGRAMS = pocketkaldi
-pocketkaldi_SOURCES = src/main.c 
+pocketkaldi_SOURCES = src/main.cc
 
 lib_LIBRARIES = libpocketkaldi.a
-libpocketkaldi_a_SOURCES = src/util.c \
-                           src/fst.c \
-                           src/matrix.c \
-                           src/pcm_reader.c \
-                           src/decoder.c \
-                           src/srfft.c \
-                           src/fbank.c \
-                           src/strlcpy.c \
-                           src/cmvn.c \
-                           src/transition.c \
-                           src/nnet.c \
-                           src/am.c \
-                           src/vector.c \
-                           src/decodable.c \
-                           src/symbol_table.c \
-                           src/pocketkaldi.c \
-                           src/introspect.c  \
-                           src/hashtable.c
+libpocketkaldi_a_SOURCES = src/util.cc \
+                           src/fst.cc \
+                           src/matrix.cc \
+                           src/pcm_reader.cc \
+                           src/decoder.cc \
+                           src/srfft.cc \
+                           src/fbank.cc \
+                           src/strlcpy.cc \
+                           src/cmvn.cc \
+                           src/transition.cc \
+                           src/nnet.cc \
+                           src/am.cc \
+                           src/vector.cc \
+                           src/decodable.cc \
+                           src/symbol_table.cc \
+                           src/pocketkaldi.cc \
+                           src/introspect.cc  \
+                           src/hashtable.cc
 
-pocketkaldi_LDADD = libpocketkaldi.a 
+pocketkaldi_LDADD = libpocketkaldi.a -lstdc++
 
 if ENABLE_TOOLS
     bin_PROGRAMS += compute_fbank extract_id2pdf
@@ -50,8 +50,7 @@ if ENABLE_TOOLS
                            libpocketkaldi.a
 endif
 
-TESTS = hashlist_test \
-        list_test \
+TESTS = list_test \
         fst_test \
         srfft_test \
         fbank_test \
@@ -61,8 +60,7 @@ TESTS = hashlist_test \
         introspect_test \
         hashtable_test
 
-check_PROGRAMS = hashlist_test \
-                 list_test \
+check_PROGRAMS = list_test \
                  fst_test \
                  srfft_test \
                  fbank_test \
@@ -71,10 +69,6 @@ check_PROGRAMS = hashlist_test \
                  symbol_table_test \
                  introspect_test \
                  hashtable_test
-
-hashlist_test_SOURCES = test/hashlist_test.cc
-hashlist_test_CXXFLAGS = $(AM_CXXFLAGS) -std=c++11 -I$(top_srcdir)/src
-hashlist_test_LDADD = libpocketkaldi.a
 
 hashtable_test_SOURCES = test/hashtable_test.cc
 hashtable_test_CXXFLAGS = $(AM_CXXFLAGS) -std=c++11 -I$(top_srcdir)/src

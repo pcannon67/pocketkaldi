@@ -6,7 +6,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+extern "C" {
 #include <cblas.h>
+}
 #include "util.h"
 
 void pk_matrix_init(pk_matrix_t *self, int nrow, int ncol) {
@@ -21,6 +23,8 @@ void pk_matrix_init(pk_matrix_t *self, int nrow, int ncol) {
 }
 
 void pk_matrix_read(pk_matrix_t *self, pk_readable_t *fd, pk_status_t *status) {
+  int num_col;
+  int num_row;
   pk_bytebuffer_t content;
   pk_vector_t col_vec;
   pk_bytebuffer_init(&content);
@@ -39,8 +43,8 @@ void pk_matrix_read(pk_matrix_t *self, pk_readable_t *fd, pk_status_t *status) {
   // Read columns and rows
   pk_readable_readbuffer(fd, &content, status);
   if (!status->ok) goto pk_matrix_read_failed;
-  int num_col = pk_bytebuffer_readint32(&content);
-  int num_row = pk_bytebuffer_readint32(&content);
+  num_col = pk_bytebuffer_readint32(&content);
+  num_row = pk_bytebuffer_readint32(&content);
 
   // Initialize the matrix
   pk_matrix_destroy(self);

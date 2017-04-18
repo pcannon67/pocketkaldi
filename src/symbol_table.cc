@@ -24,6 +24,9 @@ void pk_symboltable_read(
     pk_symboltable_t *self,
     pk_readable_t *fd,
     pk_status_t *status) {
+  int buffer_size;
+  int expected_section_size;
+
   pk_bytebuffer_t bytebuffer;
   pk_bytebuffer_init(&bytebuffer);
 
@@ -38,8 +41,8 @@ void pk_symboltable_read(
   pk_readable_readbuffer(fd, &bytebuffer, status);
   if (!status->ok) goto pk_symboltable_read_failed;
   self->size = pk_bytebuffer_readint32(&bytebuffer);
-  int buffer_size = pk_bytebuffer_readint32(&bytebuffer);
-  int expected_section_size = 8 + self->size * sizeof(int) + buffer_size;
+  buffer_size = pk_bytebuffer_readint32(&bytebuffer);
+  expected_section_size = 8 + self->size * sizeof(int) + buffer_size;
   if (section_size != expected_section_size) {
     PK_STATUS_CORRUPTED(
         status,

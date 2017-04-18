@@ -27,6 +27,7 @@
 #include <assert.h>
 #include <time.h>
 #include <stdlib.h>
+#include "util.h"
 
 /* swap size bytes between a_ and b_ */
 static inline void swap(void *a_, void *b_, size_t size) {

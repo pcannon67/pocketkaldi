@@ -6,6 +6,7 @@
 #include <assert.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 
@@ -175,6 +176,7 @@ void pk_hashtable_upsert(pk_hashtable_t *self, int32_t key, int32_t value) {
     self->buckets[idx].key = key;
     self->buckets[idx].value = value;
     self->is_empty[idx] = false;
+    ++self->size;
   } else {
     // Update
     assert(self->buckets[idx].key == key);
