@@ -7,7 +7,12 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string>
+#include <sstream>
+#include <utility>
+#include <vector>
 #include "pocketkaldi.h"
+#include "status.h"
 
 // Error types for status
 #define PK_STATUS_STSUCCESS 0
@@ -165,5 +170,90 @@ void pk_introselect_r(
     size_t nth,
     int (*compar)(const void *, const void *, void *),
     void *thunk);
+
+// 
+namespace pocketkaldi {
+namespace util {
+
+// Different kinds of ToString function used in Format
+template<typename T>
+inline std::string ToString(const T &val) {
+  return std::to_string(val);
+}
+template<>
+inline std::string ToString<std::string>(const std::string &val) {
+  return val;
+}
+template<>
+inline std::string ToString<const char *>(const char *const &val) {
+  return std::string(val);
+}
+
+namespace {
+
+inline std::string FormatImpl(const std::string &formatted) {
+  return formatted;
+}
+template<typename T, typename... Args>
+inline std::string FormatImpl(
+    const std::string &formatted,
+    T &&item,
+    Args &&...args) {
+  size_t pos = formatted.find("{}");
+  std::string repl = ToString(item);
+  std::string next_formatted = formatted;
+  if (pos != std::string::npos) {
+    next_formatted.replace(pos, 2, repl);
+  }
+  return FormatImpl(next_formatted, std::forward<Args>(args)...);
+}
+
+}  // namespace
+
+// Format string function, just like Python, it uses '{}' for replacement. For
+// example:
+//   util::Format("Hello, {}, {}!", "World", "2233");
+template<typename... Args>
+inline std::string Format(const std::string &fmt, Args &&...args) {
+  return FormatImpl(fmt, std::forward<Args>(args)...);
+}
+
+// Trim string 
+std::string Trim(const std::string &str);
+
+// Split string by delim and returns as a vector of strings
+std::vector<std::string> Split(
+    const std::string &str,
+    const std::string &delim);
+
+// String tolower
+std::string Tolower(const std::string &str);
+
+// A wrapper of FILE in stdio.h
+class ReadableFile {
+ public:
+  ReadableFile();
+  ~ReadableFile();
+
+  // Return true if end-of-file reached
+  bool Eof() const;
+
+  // Open a file for read. If success, status->ok() will be true. Otherwise,
+  // status->ok() == false
+  void Open(const std::string &filename, Status *status);
+
+  // Read a line from file. If success, the line will be stored in `line` and
+  // status->ok() will be true and return true. Otherwise, if EOF reached
+  // first time, return false but status->ok() will still be true.
+  // If other error occured, return false anf status->ok() will be false
+  bool ReadLine(std::string *line, Status *status);
+
+ private:
+  std::string filename_;
+  FILE *fd_;
+};
+
+}  // namespace util
+}  // namespace pocketkaldi
 
 #endif  // POCKETKALDI_UTIL_H_

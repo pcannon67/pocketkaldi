@@ -3,10 +3,13 @@
 #include "util.h"
 
 #include <assert.h>
+#include <ctype.h>
 #include <stdarg.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <array>
+#include <algorithm>
 
 void pk_status_init(pk_status_t *status) {
   status->ok = true;
@@ -242,3 +245,91 @@ float pk_bytebuffer_readfloat(pk_bytebuffer_t *self) {
   return val;
 }
 
+namespace pocketkaldi {
+namespace util {
+
+std::string Trim(const std::string &str) {
+  std::string::const_iterator begin = str.cbegin();
+  std::string::const_iterator end = str.cend() - 1;
+
+  while (begin < str.cend() && isspace(*begin)) ++begin;
+  while (end > begin && isspace(*end)) --end;
+  return std::string(begin, end + 1);
+}
+
+std::vector<std::string> Split(
+    const std::string &str,
+    const std::string &delim) {
+  std::vector<std::string> fields;
+  int start = 0;
+  int pos = 0;
+  while ((pos = str.find(delim, start)) != std::string::npos) {
+    fields.emplace_back(str.cbegin() + start, str.cbegin() + pos);
+    start = pos + delim.size();
+  }
+  if (str.cbegin() + start < str.cend()) {
+    fields.emplace_back(str.cbegin() + start, str.cend());
+  }
+
+  return fields;
+}
+
+std::string Tolower(const std::string &str) {
+  std::string lower(str.begin(), str.end());
+  std::transform(lower.begin(), lower.end(), lower.begin(), tolower);
+  return lower;
+}
+
+
+ReadableFile::ReadableFile(): fd_(nullptr) {
+}
+
+ReadableFile::~ReadableFile() {
+  if (fd_ != nullptr) fclose(fd_);
+  fd_ = NULL;
+}
+
+void ReadableFile::Open(const std::string &filename, Status *status) {
+  filename_ = filename;
+  fd_ = fopen(filename.c_str(), "rb");
+  if (fd_ == NULL) {
+    *status = Status::IOError(util::Format("Unable to open {}", filename));
+  }
+}
+
+bool ReadableFile::ReadLine(std::string *line, Status *status) {
+  // Failed if it already reached EOF
+  if (feof(fd_)) {
+    *status = Status::IOError(
+        util::Format("EOF already reached: {}", filename_));
+    return false;
+  }
+
+  // Readline
+  std::array<char, 4096> chunk;
+  char *s = fgets(chunk.data(), chunk.size(), fd_);
+  if (s == NULL) {
+    if (feof(fd_)) {
+      // First time that reached EOF
+      return false;
+    } else {
+      *status = Status::IOError(filename_);
+      return false;
+    }
+  }
+
+  // Trim the tailing '\r' or '\n'
+  *line = s;
+  while (line->empty() == false &&
+         (line->back() == '\r' || line->back() == '\n')) {
+    line->pop_back();
+  }
+  return true;
+}
+
+bool ReadableFile::Eof() const {
+  return feof(fd_) != 0;
+}
+
+}  // namespace util
+}  // namespace pocketkaldi

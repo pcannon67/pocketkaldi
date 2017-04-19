@@ -18,6 +18,7 @@
 #include "symbol_table.h"
 #include "transition.h"
 #include "pcm_reader.h"
+#include "configuration.h"
 
 using pocketkaldi::Decoder;
 
@@ -83,37 +84,92 @@ void pk_destroy(pk_t *self) {
 //   AM
 //   SYMBOL_TABLE
 void pk_load(pk_t *self, const char *filename, pk_status_t *status) {
-  pk_readable_t *fd = pk_readable_open(filename, status);
+  pk_readable_t *fd;
+  std::string fn;
+  pocketkaldi::Configuration conf;
+  pocketkaldi::Status status_vn;
+  conf.Read(filename, &status_vn);
+  if (!status_vn.ok()) goto pk_load_failed;
 
   // FST
+  fn = conf.GetPath("fst", "");
+  if (fn == "") {
+    status_vn = pocketkaldi::Status::Corruption(pocketkaldi::util::Format(
+        "Unable to find key 'fst' in {}",
+        filename));
+    goto pk_load_failed;
+  }
+  fd = pk_readable_open(fn.c_str(), status);
   self->fst = (pk_fst_t *)malloc(sizeof(pk_fst_t));
   pk_fst_init(self->fst);
   pk_fst_read(self->fst, fd, status);
   if (!status->ok) goto pk_load_failed;
+  pk_readable_close(fd);
+  fd = NULL;
 
   // CMVN
+  fn = conf.GetPath("cmvn_stats", "");
+  if (fn == "") {
+    status_vn = pocketkaldi::Status::Corruption(pocketkaldi::util::Format(
+        "Unable to find key 'cmvn_stats' in {}",
+        filename));
+    goto pk_load_failed;
+  }
+  fd = pk_readable_open(fn.c_str(), status);
   self->cmvn_global_stats = (pk_vector_t *)malloc(sizeof(pk_vector_t));
   pk_vector_init(self->cmvn_global_stats, 0, NAN);
   pk_vector_read(self->cmvn_global_stats, fd, status);
   if (!status->ok) goto pk_load_failed;
+  pk_readable_close(fd);
+  fd = NULL;
 
   // TRANS_MODEL
+  fn = conf.GetPath("tm", "");
+  if (fn == "") {
+    status_vn = pocketkaldi::Status::Corruption(pocketkaldi::util::Format(
+        "Unable to find key 'tm' in {}",
+        filename));
+    goto pk_load_failed;
+  }
+  fd = pk_readable_open(fn.c_str(), status);
   self->trans_model = (pk_transition_t *)malloc(sizeof(pk_transition_t));
   pk_transition_init(self->trans_model);
   pk_transition_read(self->trans_model, fd, status);
   if (!status->ok) goto pk_load_failed;
+  pk_readable_close(fd);
+  fd = NULL;
 
   // AM
+  fn = conf.GetPath("am", "");
+  if (fn == "") {
+    status_vn = pocketkaldi::Status::Corruption(pocketkaldi::util::Format(
+        "Unable to find key 'am' in {}",
+        filename));
+    goto pk_load_failed;
+  }
+  fd = pk_readable_open(fn.c_str(), status);
   self->am = (pk_am_t *)malloc(sizeof(pk_am_t));
   pk_am_init(self->am);
   pk_am_read(self->am, fd, status);
   if (!status->ok) goto pk_load_failed;
+  pk_readable_close(fd);
+  fd = NULL;
 
   // SYMBOL TABLE
+  fn = conf.GetPath("symbol_table", "");
+  if (fn == "") {
+    status_vn = pocketkaldi::Status::Corruption(pocketkaldi::util::Format(
+        "Unable to find key 'symbol_table' in {}",
+        filename));
+    goto pk_load_failed;
+  }
+  fd = pk_readable_open(fn.c_str(), status);
   self->symbol_table = (pk_symboltable_t *)malloc(sizeof(pk_symboltable_t));
   pk_symboltable_init(self->symbol_table);
   pk_symboltable_read(self->symbol_table, fd, status);
   if (!status->ok) goto pk_load_failed;
+  pk_readable_close(fd);
+  fd = NULL;
 
   // Initialize fbank feature extractor
   self->fbank = (pk_fbank_t *)malloc(sizeof(pk_fbank_t));
@@ -121,9 +177,12 @@ void pk_load(pk_t *self, const char *filename, pk_status_t *status) {
 
   if (false) {
 pk_load_failed:
+    if (!status_vn.ok()) {
+      PK_STATUS_IOERROR(status, "%s", status_vn.what().c_str());
+    } 
     pk_destroy(self);
   }
-  pk_readable_close(fd);
+  if (fd != NULL) pk_readable_close(fd);
 }
 
 void pk_utterance_init(pk_utterance_t *utt) {
@@ -174,7 +233,7 @@ void pk_process(pk_t *recognizer, pk_utterance_t *utt) {
   pk_matrix_init(&raw_feats, 0, 0);
   pk_fbank_compute(recognizer->fbank, &utt->internal->raw_wave, &raw_feats);
   t = clock() - t;
-  fprintf(stderr, "Fbank: %lfms\n", ((float)t) / CLOCKS_PER_SEC  * 1000);
+  fputs(pocketkaldi::util::Format("Fbank: {}ms\n", ((float)t) / CLOCKS_PER_SEC  * 1000).c_str(), stderr);
 
   // Apply CMVN to raw_wave
   t = clock();
