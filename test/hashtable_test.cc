@@ -9,6 +9,8 @@
 #include <vector>
 #include <unordered_map>
 
+using pocketkaldi::HashTable;
+
 #define PRIME_NUM 16777259
 
 std::vector<std::pair<int, int>> GenerateTestCases(int n, int max_val) {
@@ -26,17 +28,15 @@ std::vector<std::pair<int, int>> GenerateTestCases(int n, int max_val) {
 
 void TestHashTable() {
   std::vector<std::pair<int, int>> test_cases = GenerateTestCases(32767, 32767);
-  pk_hashtable_t hashtable;
-  pk_hashtable_init(&hashtable, PK_HASHTABLE_DEFAULTCAP);
-
+  HashTable<int, int> hashtable;
   std::unordered_map<int, int> hash_map;
 
   for (const std::pair<int, int> &test_case : test_cases) {
-    pk_hashtable_upsert(&hashtable, test_case.first, test_case.second);
+    hashtable.Insert(test_case.first, test_case.second);
     hash_map[test_case.first] = test_case.second;
   }
   for (int i = 0; i < test_cases.size(); ++i) {
-    int val = pk_hashtable_find(&hashtable, i, -1);
+    int val = hashtable.Find(i, -1);
     if (val == -1) {
       assert(hash_map.find(i) == hash_map.end());
     } else {
@@ -51,18 +51,16 @@ void Benchmark() {
   std::vector<std::pair<int, int>>
   test_cases = GenerateTestCases(100000, 100000);
 
-  pk_hashtable_t hashtable;
-  pk_hashtable_init(&hashtable, PK_HASHTABLE_DEFAULTCAP);
-
+  HashTable<int, int> hashtable;
   std::unordered_map<int, int> hash_map;
 
   puts("upsert:");
   clock_t t = clock();
   for (int i = 0; i < M; ++i) {
     for (const std::pair<int, int> &test_case : test_cases) {
-      pk_hashtable_upsert(&hashtable, test_case.first, test_case.second);
+      hashtable.Insert(test_case.first, test_case.second);
     }
-    pk_hashtable_clear(&hashtable);
+    hashtable.Clear();
   }
   t = clock() - t;
   printf("  pk_hashtable_t: %lfms\n", ((float)t) / CLOCKS_PER_SEC  * 1000);
@@ -82,7 +80,7 @@ void Benchmark() {
   t = clock();
   for (int i = 0; i < M; ++i) {
     for (int i = 0; i < test_cases.size(); ++i) {
-      int val = pk_hashtable_find(&hashtable, i, -1);
+      int val = hashtable.Find(i, -1);
       sum += val;
     }
   }

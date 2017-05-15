@@ -151,7 +151,7 @@ class Decoder {
 
   // Stores the map between state-id and the index of corresponded token in
   // toks_
-  pk_hashtable_t state_idx_;
+  HashTable<int32_t, int32_t> state_idx_;
 
   // Storea all output-label nodes
   std::vector<OLabel> olabels_;

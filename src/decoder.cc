@@ -28,13 +28,12 @@ Decoder::Hypothesis::Hypothesis(const std::vector<int> &words, float weight):
 
 Decoder::Decoder(const pk_fst_t *fst):
     fst_(fst),
-    beam_(16.0) {
-  pk_hashtable_init(&state_idx_, kBeamSize * 4);
+    beam_(16.0),
+    state_idx_(kBeamSize * 4) {
 }
 
 Decoder::~Decoder() {
   fst_ = nullptr;
-  pk_hashtable_destroy(&state_idx_);
 }
 
 bool Decoder::Decode(pk_decodable_t *decodable) {
@@ -85,7 +84,7 @@ void Decoder::InitDecoding() {
 
 bool Decoder::InsertTok(const pk_fst_arc_t *arc, int olabel_idx, float cost) {
   int next_state = arc->next_state;
-  int tok_idx = pk_hashtable_find(&state_idx_, next_state, kNotExist);
+  int tok_idx = state_idx_.Find(next_state, kNotExist);
   
   // Create the olabel for next tok when the output_label of arc
   // is not 0 (epsilon)
@@ -101,7 +100,7 @@ bool Decoder::InsertTok(const pk_fst_arc_t *arc, int olabel_idx, float cost) {
   if (tok_idx == kNotExist) {
     int num_toks = toks_.size();
     toks_.emplace_back(next_state, cost, next_olabel_idx);
-    pk_hashtable_upsert(&state_idx_, next_state, num_toks);
+    state_idx_.Insert(next_state, num_toks);
   } else {
     // If the cost of existing token is less than the new one, just discard
     // inserting and return false
@@ -173,7 +172,7 @@ void Decoder::ProcessNonemitting(double cutoff) {
     queue.pop_back();
 
     // Get tok by state
-    int tok_idx = pk_hashtable_find(&state_idx_, state, kNotExist);
+    int tok_idx = state_idx_.Find(state, kNotExist);
     assert(tok_idx != kNotExist);
 
     pk_fst_iter_t arc_iter;
@@ -202,7 +201,7 @@ void Decoder::ProcessNonemitting(double cutoff) {
 float Decoder::ProcessEmitting(pk_decodable_t *decodable) {
   // Clear the prev_toks_
   prev_toks_.clear();
-  pk_hashtable_clear(&state_idx_);
+  state_idx_.Clear();
 
   // Swap toks_ and empty prev_toks_
   toks_.swap(prev_toks_);
