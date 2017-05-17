@@ -32,6 +32,7 @@
 #include "decodable.h"
 #include "hashtable.h"
 #include "vector.h"
+#include "pool.h"
 #include "fst.h"
 #include "am.h"
 
@@ -68,44 +69,13 @@ class Decoder {
   Hypothesis BestPath();
 
  private:
-  // token_t represents a state in the viterbi lattice. olabel_idx is the index
+  // Token represents a state in the viterbi lattice. olabel_idx is the index
   // of its corresponded outpu label link-list in the list impl->olabels
-  class Token {
-   public:
-    Token(int state, float cost, int olabel_idx);
-
-    // The state in FST
-    int state() const { return state_; }
-
-    // Current cost
-    float cost() const { return cost_; }
-
-    // Index of olabel in Decoder::olabels_
-    int olabel_idx() const { return olabel_idx_; }
-
-   private:
-    int state_;
-    float cost_;
-    int olabel_idx_;
-  };
+  class Token;
 
   // OLabel is the struct records the list of output labels of a tok in beam. 
-  // prev_idx pointes to the previous OLabel like a link list. And the
-  // prev_idx of root node is OLABEL_BEGINIDX
-  class OLabel {
-   public:
-    OLabel(int prev_idx, int olabel);
-
-    // Index of previous olabel
-    int prev_idx() const { return prev_idx_; }
-
-    // Output label of current node
-    int olabel() const { return olabel_; }
-
-   private:
-    int prev_idx_;
-    int olabel_;
-  };
+  // previous pointes to the previous OLabel like a link list.
+  class OLabel;
 
   // Get the weight cutoff from prev_toks_. We won't go throuth all the toks in
   // beam here to calculate cutoff, Since it takes a long time. Instead, we
@@ -114,7 +84,7 @@ class Decoder {
   // beam_size
   // \param best_tokidx index of best token in prev_toks_
   // \return the cutoff of cost to beam size in prev_toks_
-  double GetCutoff(float *adaptive_beam, int *best_tokidx);
+  double GetCutoff(float *adaptive_beam, Token **best_tok);
 
   // Initialize decoding and put the root state into beam
   void InitDecoding();
@@ -125,7 +95,7 @@ class Decoder {
   // \param cost the cost of new token
   // \return true if successfully inserted. Otherwise, when the cost of
   // existing tok is less than new one, return false
-  bool InsertTok(const pk_fst_arc_t *arc, int olabel_idx, float cost);
+  bool InsertTok(const pk_fst_arc_t *arc, OLabel *olabel, float cost);
 
   // Processes nonemitting arcs for one frame. Propagates within cur_toks_.
   void ProcessNonemitting(double cutoff);
@@ -146,15 +116,16 @@ class Decoder {
   // Tokens used in decoding. toks_ is the current beam, all generated tokens
   // will be placed here. And after frame advanced, the toks_ will be swapped
   // with prev_toks_
-  std::vector<Token> toks_;
-  std::vector<Token> prev_toks_;
+  Pool<Token> toks_pool_;
+  std::vector<Token *> toks_;
+  std::vector<Token *> prev_toks_;
 
   // Stores the map between state-id and the index of corresponded token in
   // toks_
   HashTable<int32_t, int32_t> state_idx_;
 
   // Storea all output-label nodes
-  std::vector<OLabel> olabels_;
+  Pool<OLabel> olabels_pool_;
 
   // Beam threshold
   float beam_;
@@ -174,6 +145,40 @@ class Decoder::Hypothesis {
  private:
   std::vector<int> words_;  
   float weight_;
+};
+
+class Decoder::Token {
+ public:
+  Token(int state, float cost, OLabel *olabel);
+
+  // The state in FST
+  int state() const { return state_; }
+
+  // Current cost
+  float cost() const { return cost_; }
+
+  // Head of output label chain
+  OLabel *olabel() const { return olabel_; }
+
+ private:
+  int state_;
+  float cost_;
+  OLabel *olabel_;
+};
+
+class Decoder::OLabel {
+ public:
+  OLabel(OLabel *previous, int olabel);
+
+  // Index of previous olabel
+  OLabel *previous() const { return previous_; }
+
+  // Output label of current node
+  int olabel() const { return olabel_; }
+
+ private:
+  OLabel *previous_;
+  int olabel_;
 };
 
 }  // namespace pocketkaldi

@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <string>
 #include <sstream>
+#include <iostream>
 #include <utility>
 #include <vector>
 #include "pocketkaldi.h"
@@ -24,6 +25,10 @@
 #define PK_MIN(a, b) ((a) < (b) ? (a) : (b))
 
 #define PK_PATHMAX 1024
+
+#define PK_INFO(msg) std::cout << __FILE__ << ": " << (msg) << std::endl;
+// #define PK_DEBUG(msg) std::cout << __FILE__ << ": " << (msg) << std::endl;
+#define PK_DEBUG(msg)
 
 typedef struct pk_readable_t {
   char filename[PK_PATHMAX];
@@ -251,6 +256,16 @@ class ReadableFile {
  private:
   std::string filename_;
   FILE *fd_;
+};
+
+// To check if a class have 'previous' field
+template <typename T>
+struct has_previous {
+  template<typename C> static int8_t check(decltype(&C::previous)) ;
+  template<typename C> static int16_t check(...);    
+  enum {
+    value = (sizeof(check<T>(0)) == sizeof(int8_t))
+  };
 };
 
 }  // namespace util

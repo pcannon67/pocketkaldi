@@ -58,9 +58,9 @@ TESTS = list_test \
         cmvn_test \
         nnet_test \
         symbol_table_test \
-        introspect_test \
         hashtable_test \
-        configuration_test
+        configuration_test \
+        pool_test
 
 check_PROGRAMS = list_test \
                  fst_test \
@@ -69,9 +69,9 @@ check_PROGRAMS = list_test \
                  cmvn_test \
                  nnet_test \
                  symbol_table_test \
-                 introspect_test \
                  hashtable_test \
-                 configuration_test
+                 configuration_test \
+                 pool_test
 
 configuration_test_SOURCES = test/configuration_test.cc
 configuration_test_CXXFLAGS = $(AM_CXXFLAGS) -std=c++11 -I$(top_srcdir)/src -DTESTDIR=\"$(top_srcdir)/test/\"
@@ -109,9 +109,9 @@ nnet_test_SOURCES = test/nnet_test.cc
 nnet_test_CXXFLAGS = $(AM_CXXFLAGS) -std=c++11 -I$(top_srcdir)/src -DTESTDIR=\"$(top_srcdir)/test/\"
 nnet_test_LDADD = libpocketkaldi.a
 
-introspect_test_SOURCES = test/introspect_test.cc
-introspect_test_CXXFLAGS = $(AM_CXXFLAGS) -std=c++11 -I$(top_srcdir)/src -DTESTDIR=\"$(top_srcdir)/test/\"
-introspect_test_LDADD = libpocketkaldi.a
+pool_test_SOURCES = test/pool_test.cc
+pool_test_CXXFLAGS = $(AM_CXXFLAGS) -std=c++11 -I$(top_srcdir)/src
+pool_test_LDADD = libpocketkaldi.a
 
 if ENABLE_TOOLS
     TESTS_ENVIRONMENT = export testdir=$(top_srcdir)/test && export kaldiroot=$(KALDI_ROOT) &&

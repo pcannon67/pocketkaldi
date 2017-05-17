@@ -10,14 +10,14 @@
 
 namespace pocketkaldi {
 
-Decoder::Token::Token(int state, float cost, int olabel_idx):
+Decoder::Token::Token(int state, float cost, OLabel *olabel):
     state_(state),
     cost_(cost),
-    olabel_idx_(olabel_idx) {
+    olabel_(olabel) {
 }
 
-Decoder::OLabel::OLabel(int prev_idx, int olabel):
-    prev_idx_(prev_idx),
+Decoder::OLabel::OLabel(OLabel *previous, int olabel):
+    previous_(previous),
     olabel_(olabel) {
 }
 
@@ -44,8 +44,10 @@ bool Decoder::Decode(pk_decodable_t *decodable) {
   clock_t t_emitting = 0;
   clock_t t_nonemitting = 0;
   
+  PK_DEBUG("InitDecoding()");
   InitDecoding();
   while(!pk_decodable_islastframe(decodable, num_frames_decoded_ - 1)) {
+    PK_DEBUG(util::Format("frame: {}", num_frames_decoded_));
     t = clock();
     double cutoff = ProcessEmitting( decodable);
     t_emitting += clock() - t;
@@ -77,35 +79,37 @@ void Decoder::InitDecoding() {
   dummy_arc.next_state = start_state;
   dummy_arc.weight = 0;
 
-  InsertTok(&dummy_arc, kNotExist, 0.0f);
+  InsertTok(&dummy_arc, nullptr, 0.0f);
   num_frames_decoded_ = 0;
   ProcessNonemitting(INFINITY);
 }
 
-bool Decoder::InsertTok(const pk_fst_arc_t *arc, int olabel_idx, float cost) {
+bool Decoder::InsertTok(
+    const pk_fst_arc_t *arc,
+    OLabel *prev_olabel,
+    float cost) {
   int next_state = arc->next_state;
   int tok_idx = state_idx_.Find(next_state, kNotExist);
   
   // Create the olabel for next tok when the output_label of arc
   // is not 0 (epsilon)
-  int next_olabel_idx = kOLabelBeginIdx;
+  OLabel *next_olabel = nullptr;
   if (arc->output_label != 0) {
-    next_olabel_idx = olabels_.size();
-    olabels_.emplace_back(olabel_idx, arc->output_label);
+    next_olabel = olabels_pool_.Alloc(prev_olabel, arc->output_label);
   } else {
-    next_olabel_idx = olabel_idx;
+    next_olabel = prev_olabel;
   }
 
   // Insert new or update existing token in the beam
   if (tok_idx == kNotExist) {
     int num_toks = toks_.size();
-    toks_.emplace_back(next_state, cost, next_olabel_idx);
+    toks_.push_back(toks_pool_.Alloc(next_state, cost, next_olabel));
     state_idx_.Insert(next_state, num_toks);
   } else {
     // If the cost of existing token is less than the new one, just discard
     // inserting and return false
-    if (toks_[tok_idx].cost() > cost) {
-      toks_[tok_idx] = Token(next_state, cost, next_olabel_idx);
+    if (toks_[tok_idx]->cost() > cost) {
+      toks_[tok_idx] = toks_pool_.Alloc(next_state, cost, next_olabel);
     } else {
       return false;
     }
@@ -113,7 +117,7 @@ bool Decoder::InsertTok(const pk_fst_arc_t *arc, int olabel_idx, float cost) {
   return true;
 }
 
-double Decoder::GetCutoff(float *adaptive_beam, int *best_tokidx) {
+double Decoder::GetCutoff(float *adaptive_beam, Token **best_tok) {
   double best_cost = INFINITY;
   costs_.clear();
   uint64_t next_random = kCutoffRandSeed;
@@ -121,19 +125,18 @@ double Decoder::GetCutoff(float *adaptive_beam, int *best_tokidx) {
   // Probability of sample a cost into self->costs
   float sample_prob = kCutoffSamples / (float)toks_.size();
   
-  for (int i = 0; i < prev_toks_.size(); ++i) {
-    const Token &tok = prev_toks_[i];
+  for (Token *tok : prev_toks_) {
     // Random sample costs from beam. To be consistant even in multi-thread
     // environment, do don't use rand() here
     next_random = next_random * (uint64_t)25214903917 + 11;
     float random_f = (next_random & 0xffff) / (float)65535;
     if (random_f < sample_prob) {
-      costs_.push_back(tok.cost());
+      costs_.push_back(tok->cost());
     }
 
-    if (tok.cost() < best_cost) {
-      best_cost = tok.cost();
-      *best_tokidx = i;
+    if (tok->cost() < best_cost) {
+      best_cost = tok->cost();
+      *best_tok = tok;
     }
   }
 
@@ -162,8 +165,9 @@ double Decoder::GetCutoff(float *adaptive_beam, int *best_tokidx) {
 // Processes nonemitting arcs for one frame.  Propagates within cur_toks_.
 void Decoder::ProcessNonemitting(double cutoff) {
   std::vector<int> queue;
-  for (const Token &tok : toks_) {
-    queue.push_back(tok.state());
+  for (const Token *tok : toks_) {
+    assert(tok->state() >= 0);
+    queue.push_back(tok->state());
   }
 
   // Loop until no state in beam have out-going epsilon arc
@@ -172,6 +176,7 @@ void Decoder::ProcessNonemitting(double cutoff) {
     queue.pop_back();
 
     // Get tok by state
+    // PK_DEBUG(util::Format("state_idx_.Find({}, kNotExist)", state));
     int tok_idx = state_idx_.Find(state, kNotExist);
     assert(tok_idx != kNotExist);
 
@@ -183,24 +188,22 @@ void Decoder::ProcessNonemitting(double cutoff) {
       if (arc->input_label != 0) continue;
 
       const float ac_cost = 0.0;
-      const Token &from_tok = toks_[tok_idx];
-      double total_cost = from_tok.cost() + arc->weight + ac_cost;
+      const Token *from_tok = toks_[tok_idx];
+      double total_cost = from_tok->cost() + arc->weight + ac_cost;
       if (total_cost > cutoff) continue;
 
       // Create and insert tok into beam
       // If the token successfully inserted or updated in the beam, `inserted`
       // will be true and then we will push the new state into `queue`
-      bool inserted = InsertTok(arc, from_tok.olabel_idx(), total_cost);
+      bool inserted = InsertTok(arc, from_tok->olabel(), total_cost);
       if (inserted) queue.push_back(arc->next_state);
     }
   }
 }
 
-
 // Process the emitting (non-epsilon) arcs of each states in the beam
 float Decoder::ProcessEmitting(pk_decodable_t *decodable) {
   // Clear the prev_toks_
-  prev_toks_.clear();
   state_idx_.Clear();
 
   // Swap toks_ and empty prev_toks_
@@ -208,8 +211,8 @@ float Decoder::ProcessEmitting(pk_decodable_t *decodable) {
 
   // Calculate beam_cutoff of beam
   float adaptive_beam = INFINITY;
-  int best_tokidx = 0;
-  float weight_cutoff = GetCutoff(&adaptive_beam, &best_tokidx);
+  Token *best_tok = 0;
+  float weight_cutoff = GetCutoff(&adaptive_beam, &best_tok);
 
   // This is the cutoff we use after adding in the log-likes (i.e.
   // for the next frame).  This is a bound on the cutoff we will use
@@ -218,8 +221,7 @@ float Decoder::ProcessEmitting(pk_decodable_t *decodable) {
 
   // First process the best token to get a hopefully
   // reasonably tight bound on the next cutoff.
-  const Token &best_tok = prev_toks_[best_tokidx];
-  float state = best_tok.state();
+  float state = best_tok->state();
   pk_fst_iter_t arc_iter;
   pk_fst_iterate_arc(fst_, state, &arc_iter);
   const pk_fst_arc_t *arc = nullptr;
@@ -230,7 +232,7 @@ float Decoder::ProcessEmitting(pk_decodable_t *decodable) {
         decodable,
         num_frames_decoded_,
         arc->input_label);
-    double total_cost = best_tok.cost() + arc->weight + acoustic_cost;
+    double total_cost = best_tok->cost() + arc->weight + acoustic_cost;
     if (total_cost + adaptive_beam < next_weight_cutoff) {
       next_weight_cutoff = total_cost + adaptive_beam;
     }
@@ -238,12 +240,12 @@ float Decoder::ProcessEmitting(pk_decodable_t *decodable) {
   
   // Ok, we iterate each token in prev_tok_ and add new tokens into toks_ with
   // the emitting arcs of them.
-  for (const Token &from_tok : prev_toks_) {
-    int state = from_tok.state();
+  for (Token *from_tok : prev_toks_) {
+    int state = from_tok->state();
 
     // weight_cutoff is computed according to beam size
     // So there are only top beam_size toks less than weight_cutoff
-    if (from_tok.cost() > weight_cutoff) continue;
+    if (from_tok->cost() > weight_cutoff) continue;
 
     pk_fst_iter_t arc_iter;
     pk_fst_iterate_arc(fst_, state, &arc_iter);
@@ -255,7 +257,7 @@ float Decoder::ProcessEmitting(pk_decodable_t *decodable) {
           decodable,
           num_frames_decoded_,
           arc->input_label);
-      double total_cost = from_tok.cost() + arc->weight + ac_cost;
+      double total_cost = from_tok->cost() + arc->weight + ac_cost;
       
       // Prune the toks whose cost is too high
       if (total_cost > next_weight_cutoff) continue;
@@ -264,10 +266,17 @@ float Decoder::ProcessEmitting(pk_decodable_t *decodable) {
       }
 
       // Create and insert the tok into toks_
-      InsertTok(arc, from_tok.olabel_idx(), total_cost);
+      assert(arc->next_state >= 0);
+      InsertTok(arc, from_tok->olabel(), total_cost);
     }
+
+    toks_pool_.Dealloc(from_tok);
   }
   num_frames_decoded_++;
+
+  // All pointers in prev_toks_ is freed
+  prev_toks_.clear();
+
   return next_weight_cutoff;
 }
 
@@ -280,9 +289,9 @@ Decoder::Hypothesis Decoder::BestPath() {
   int best_idx = kNotExist;
   double best_cost = INFINITY;
   for (int i = 0; i < toks_.size(); ++i) {
-    const Token &tok = toks_[i];
-    int state = tok.state();
-    double cost = tok.cost() + pk_fst_final(fst_, state);
+    Token *tok = toks_[i];
+    int state = tok->state();
+    double cost = tok->cost() + pk_fst_final(fst_, state);
     if (cost != INFINITY && cost < best_cost) {
       best_cost = cost;
       best_idx = i;
@@ -291,17 +300,17 @@ Decoder::Hypothesis Decoder::BestPath() {
   if (best_idx == kNotExist) return Hypothesis(std::vector<int>(), 0.0f);
 
   // Get all output labels from best_tok
-  const Token &best_tok = toks_[best_idx];
-  int best_olabelidx = best_tok.olabel_idx();
-  int olabel_idx = best_olabelidx;
-  while (olabel_idx != kOLabelBeginIdx) {
-    const OLabel &olabel = olabels_[olabel_idx];
-    words.push_back(olabel.olabel());
-    olabel_idx = olabel.prev_idx();
+  Token *best_tok = toks_[best_idx];
+  OLabel *best_olabel = best_tok->olabel();
+  OLabel *olabel = best_olabel;
+  while (olabel != nullptr) {
+    PK_DEBUG(util::Format("Word: {}", olabel->olabel()));
+    words.push_back(olabel->olabel());
+    olabel = olabel->previous();
   }
 
   weight = best_cost;
-  weight += pk_fst_final(fst_, best_tok.state());
+  weight += pk_fst_final(fst_, best_tok->state());
 
   return Hypothesis(words, weight);
 }

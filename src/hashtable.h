@@ -14,6 +14,11 @@ namespace pocketkaldi {
 
 extern int gPrimeNumbers[32];
 
+// Hash fucntions
+inline int32_t hash(int32_t x) {
+  return x;
+}
+
 // A open addressing implementation of hashtable
 // It assumes both K and V are prime types. So value copy won't cost too much
 // time. Usually, K is int and V is int or pointer
@@ -102,7 +107,6 @@ class HashTable {
   int prime_idx_;
 
   int size_;
-  std::hash<K> hash_;
 
   // Get index of the nearest prime number of num in gPrimeNumbers. And the
   // prime number should greater or equal than num
@@ -132,7 +136,7 @@ class HashTable {
   // buckets, returns the position to it. If the key doesn't exists, returns
   // the position to put.
   int Lookup(Item *buckets, bool *empty, int buckets_size, K key) const {
-    int hashval = hash_(key) % buckets_size;
+    int hashval = hash(key) % buckets_size;
     for (int i = 1; ; ++i) {
       assert(i < 65536);
       for (int sign = -1; sign <= 1; sign += 2) {
