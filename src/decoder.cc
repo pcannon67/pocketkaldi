@@ -55,6 +55,18 @@ bool Decoder::Decode(pk_decodable_t *decodable) {
     t = clock();
     ProcessNonemitting(cutoff);
     t_nonemitting = clock() - t;
+
+    // GC of olabel nodes
+    if (num_frames_decoded_ % 20 == 0) {
+      double free_nodes = olabels_pool_.free_nodes();
+      double allocated_nodes = olabels_pool_.allocated_nodes();
+
+      std::vector<OLabel *> olabel_root;
+      for (Token *tok : toks_) {
+        if (tok->olabel()) olabel_root.push_back(tok->olabel());
+      }
+      olabels_pool_.GC(olabel_root);
+    }
   }
 
   t_all = clock() - t_all;
@@ -307,6 +319,7 @@ Decoder::Hypothesis Decoder::BestPath() {
     PK_DEBUG(util::Format("Word: {}", olabel->olabel()));
     words.push_back(olabel->olabel());
     olabel = olabel->previous();
+    assert(words.size() < 100000);
   }
 
   weight = best_cost;

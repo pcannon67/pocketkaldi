@@ -125,7 +125,7 @@ class Decoder {
   HashTable<int32_t, int32_t> state_idx_;
 
   // Storea all output-label nodes
-  Pool<OLabel> olabels_pool_;
+  GCPool<OLabel> olabels_pool_;
 
   // Beam threshold
   float beam_;
@@ -166,7 +166,7 @@ class Decoder::Token {
   OLabel *olabel_;
 };
 
-class Decoder::OLabel {
+class Decoder::OLabel : public Collectable {
  public:
   OLabel(OLabel *previous, int olabel);
 

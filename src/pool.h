@@ -20,7 +20,7 @@ class Pool {
     blocks_.push_back(block);
   }
 
-  ~Pool() {
+  virtual ~Pool() {
     Clear();
     for (T *block : blocks_) {
       ::operator delete(block);
@@ -56,7 +56,6 @@ class Pool {
   }
 
   // Allocate a class T with constructor parameter args 
-  template<typename... Args>
   void Dealloc(T *pointer) {
     if (!std::is_trivially_destructible<T>::value) {
       pointer->~T();
@@ -87,11 +86,138 @@ class Pool {
     free_.clear();
   }
 
- private:
+  // Free and allocated nodes in this pool
+  int free_nodes() const {
+    return free_.size() +
+           (blocks_.size() - current_block_) * BLOCK_SIZE -
+           current_pos_;
+  }
+  int allocated_nodes() const {
+    return current_block_ * BLOCK_SIZE + current_pos_ - free_.size();
+  }
+
+ protected:
   std::vector<T *> blocks_;
   std::vector<T *> free_;
   int current_block_;
   int current_pos_;
+};
+
+// Base class for any class T could be used in GCPool
+class Collectable {
+ public:
+  enum {
+    kMarked,
+    kUnmarked,
+    kFreed,
+    kUsing
+  };
+  Collectable() : state_(kFreed) {}
+
+  // Indicates this node is freed or under using
+  void Free() { state_ = kFreed; }
+  void Use() { state_ = kUsing; }
+
+  // Mark and ummark in GC
+  void Mark() { 
+    assert(state_ != kFreed);
+    state_ = kMarked; 
+  }
+  void Unmark() { 
+    assert(state_ != kFreed);
+    state_ = kUnmarked;
+  }
+
+  bool is_marked() const { return state_ == kMarked; }
+  bool is_freed() const { return state_ == kFreed; }
+
+ private:
+  int8_t state_;
+};
+
+// GC pool add gabbage collection into Pool. Using mark-and-sweep algorithm. 
+// And the class T linked with each othher with 'previous()' pointer.
+// So the type T should have at least 4 members
+//   T *previous()
+//   void mark()
+//   void unmark()
+//   bool marked()
+template<typename T, int BLOCK_SIZE = 4096>
+class GCPool : public Pool<T, BLOCK_SIZE> {
+ public:
+  GCPool() {
+  }
+
+  template<typename... Args>
+  T *Alloc(Args&&... args) {
+    T *node = Pool<T, BLOCK_SIZE>::Alloc(std::forward<Args>(args)...);
+    node->Use();
+    return node;
+  }
+
+  void Dealloc(T *pointer) {
+    pointer->Free();
+    Pool<T, BLOCK_SIZE>::Dealloc(pointer);
+  }
+
+  // Start gabbage collection. Root set for GC is in root_nodes
+  void GC(const std::vector<T *> root_nodes) {
+    PK_DEBUG("=== GC Start ===");
+    int free_nodes = this->free_nodes();
+    int allocated_nodes = this->allocated_nodes();
+
+    // Unmark all elements
+    for (int block = 0; block <= this->current_block_; ++block) {
+      int max_pos = block == this->current_block_ ?
+          this->current_pos_ - 1 :
+          BLOCK_SIZE;
+      for (int pos = 0; pos < max_pos; ++pos) {
+        // Bypass the nodes already freed
+        if (this->blocks_[block][pos].is_freed()) continue;
+        this->blocks_[block][pos].Unmark();
+      }
+    }
+
+    // Push the root set into queue. Then traverse all nodes linked directly or
+    // indirectly by root set
+    std::vector<T *> queue(root_nodes.begin(), root_nodes.end());
+    while (!queue.empty()) {
+      T *node = queue.back();
+      queue.pop_back();
+
+      // Ignore nodes that already marked
+      if (node->is_marked()) continue;
+      
+      // Freed node shouldn't be pointed by existing nodes
+      assert(!node->is_freed());
+
+      node->Mark();
+      if (node->previous()) {
+        queue.push_back(node->previous());
+      }
+    }
+
+    // Free all unmarked nodes
+    int free_count = 0;
+    for (int block = 0; block <= this->current_block_; ++block) {
+      int max_pos = block == this->current_block_ ?
+          this->current_pos_ - 1 :
+          BLOCK_SIZE;
+      for (int pos = 0; pos < max_pos; ++pos) {
+        // Bypass the nodes already freed
+        T *node = this->blocks_[block] + pos;
+        if (node->is_freed()) continue;
+        if (node->is_marked()) continue;
+        Dealloc(node);
+        ++free_count;
+      }
+    }
+    PK_DEBUG(util::Format(
+        "Freed {} nodes, Allocated = {}",
+        free_count,
+        this->allocated_nodes()));
+    PK_DEBUG("=== GC Finsihed ===");
+  }
 };
 
 }  // namespace pocketkaldi

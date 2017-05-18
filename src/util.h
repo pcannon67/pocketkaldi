@@ -180,17 +180,19 @@ void pk_introselect_r(
 namespace pocketkaldi {
 namespace util {
 
-// Different kinds of ToString function used in Format
-template<typename T>
+template<typename T,
+         typename = typename std::enable_if<std::is_arithmetic<T>::value>::type>
 inline std::string ToString(const T &val) {
   return std::to_string(val);
 }
-template<>
-inline std::string ToString<std::string>(const std::string &val) {
+template<typename T>
+inline std::string ToString(const T * const val) {
+  return std::to_string(reinterpret_cast<uint64_t>(val));
+}
+inline std::string ToString(const std::string &val) {
   return val;
 }
-template<>
-inline std::string ToString<const char *>(const char *const &val) {
+inline std::string ToString(const char *const &val) {
   return std::string(val);
 }
 
