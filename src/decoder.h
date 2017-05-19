@@ -55,7 +55,7 @@ class Decoder {
 
   // Initialize the decoder with the FST graph fst. It just borrows the pointer
   // of fst and not own it.
-  Decoder(const pk_fst_t *fst);
+  Decoder(const Fst *fst);
   ~Decoder();
 
   // Decodes the Decodable object, the best path could be obtain by
@@ -95,7 +95,7 @@ class Decoder {
   // \param cost the cost of new token
   // \return true if successfully inserted. Otherwise, when the cost of
   // existing tok is less than new one, return false
-  bool InsertTok(const pk_fst_arc_t *arc, OLabel *olabel, float cost);
+  bool InsertTok(const Fst::Arc *arc, OLabel *olabel, float cost);
 
   // Processes nonemitting arcs for one frame. Propagates within cur_toks_.
   void ProcessNonemitting(double cutoff);
@@ -108,7 +108,7 @@ class Decoder {
   std::vector<float> costs_;
 
   // FST graph used for decoding
-  const pk_fst_t *fst_;
+  const Fst *fst_;
 
   // Frames decoded
   int num_frames_decoded_;

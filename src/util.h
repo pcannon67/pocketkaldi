@@ -247,7 +247,16 @@ class ReadableFile {
 
   // Open a file for read. If success, status->ok() will be true. Otherwise,
   // status->ok() == false
-  void Open(const std::string &filename, Status *status);
+  Status Open(const std::string &filename);
+
+  // Read n bytes (size) from file and put to *ptr
+  Status Read(void *ptr, int size);
+
+  // Read an type T from file
+  template<typename T>
+  Status ReadValue(T *data) {
+    return Read(data, sizeof(T));
+  }
 
   // Read a line from file. If success, the line will be stored in `line` and
   // status->ok() will be true and return true. Otherwise, if EOF reached

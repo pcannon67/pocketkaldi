@@ -2,61 +2,62 @@
 
 #include <assert.h>
 #include <stdio.h>
+#include <limits>
 #include "fst.h"
 #include "util.h"
 
+using pocketkaldi::Fst;
+using pocketkaldi::util::ReadableFile;
+using pocketkaldi::Status;
+
 void TestFst() {
-  pk_fst_t fst;
-  pk_status_t status;
+  Status status;
+  ReadableFile fd;
+  status = fd.Open(TESTDIR "data/testinput.fst");
+  assert(status.ok());
 
-  pk_status_init(&status);
-  pk_readable_t *fd = pk_readable_open(TESTDIR "data/testinput.fst", &status);
-  assert(status.ok);
 
-  pk_fst_read(&fst, fd, &status);
-  puts(TESTDIR "data/testinput.fst");
-  assert(status.ok);
+  Fst fst;
+  status = fst.Read(&fd);
+  assert(status.ok());
 
-  assert(pk_fst_startstate(&fst) == 0);
-  assert(pk_fst_final(&fst, 0) == 0);
-  assert(pk_fst_final(&fst, 1) == 0);
-  assert(pk_fst_final(&fst, 2) == 3.5f);
+  assert(fst.start_state() == 0);
+  assert(fst.final(0) == std::numeric_limits<double>::infinity());
+  assert(fst.final(1) == std::numeric_limits<double>::infinity());
+  assert(fst.final(2) == 3.5f);
 
-  pk_fst_iter_t it;
-  const pk_fst_arc_t *arc;
+  
+  const Fst::Arc *arc = nullptr;
 
-  pk_fst_iterate_arc(&fst, 0, &it);
-  arc = pk_fst_iter_next(&it);
+  Fst::ArcIterator arc_iter = fst.IterateArcs(0);
+  arc = arc_iter.Next();
   assert(arc);
   assert(arc->next_state == 1);
   assert(arc->input_label == 1);
   assert(arc->output_label == 1);
   assert(arc->weight == 0.5f);
-  arc = pk_fst_iter_next(&it);
+  arc = arc_iter.Next();
   assert(arc);
   assert(arc->next_state == 1);
   assert(arc->input_label == 2);
   assert(arc->output_label == 2);
   assert(arc->weight == 1.5f);
-  arc = pk_fst_iter_next(&it);
-  printf("%d\n", it.total);
-  assert(arc == NULL);
+  arc = arc_iter.Next();
+  assert(arc == nullptr);
 
-  pk_fst_iterate_arc(&fst, 1, &it);
-  arc = pk_fst_iter_next(&it);
+  arc_iter = fst.IterateArcs(1);
+  arc = arc_iter.Next();
   assert(arc);
   assert(arc->next_state == 2);
   assert(arc->input_label == 3);
   assert(arc->output_label == 3);
   assert(arc->weight == 2.5f);
-  arc = pk_fst_iter_next(&it);
-  assert(arc == NULL);
+  arc = arc_iter.Next();
+  assert(arc == nullptr);
 
-  pk_fst_iterate_arc(&fst, 2, &it);
-  arc = pk_fst_iter_next(&it);
-  assert(arc == NULL);
-
-  pk_readable_close(fd);
+  arc_iter = fst.IterateArcs(2);
+  arc = arc_iter.Next();
+  assert(arc == nullptr);
 }
 
 int main() {

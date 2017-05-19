@@ -40,11 +40,8 @@ void pk_init(pk_t *self) {
 }
 
 void pk_destroy(pk_t *self) {
-  if (self->fst) {
-    pk_fst_destroy(self->fst);
-    free(self->fst);
-    self->fst = NULL;
-  }
+  delete self->fst;
+  self->fst = nullptr;
 
   if (self->am) {
     pk_am_destroy(self->am);
@@ -84,11 +81,12 @@ void pk_destroy(pk_t *self) {
 //   AM
 //   SYMBOL_TABLE
 void pk_load(pk_t *self, const char *filename, pk_status_t *status) {
-  pk_readable_t *fd;
+  pk_readable_t *fd = nullptr;
+  pocketkaldi::util::ReadableFile fd_vn;
   std::string fn;
   pocketkaldi::Configuration conf;
   pocketkaldi::Status status_vn;
-  conf.Read(filename, &status_vn);
+  status_vn = conf.Read(filename);
   if (!status_vn.ok()) goto pk_load_failed;
 
   // FST
@@ -99,12 +97,10 @@ void pk_load(pk_t *self, const char *filename, pk_status_t *status) {
         filename));
     goto pk_load_failed;
   }
-  fd = pk_readable_open(fn.c_str(), status);
-  self->fst = (pk_fst_t *)malloc(sizeof(pk_fst_t));
-  pk_fst_init(self->fst);
-  pk_fst_read(self->fst, fd, status);
-  if (!status->ok) goto pk_load_failed;
-  pk_readable_close(fd);
+  status_vn = fd_vn.Open(fn.c_str());
+  self->fst = new pocketkaldi::Fst();
+  status_vn = self->fst->Read(&fd_vn);
+  if (!status_vn.ok()) goto pk_load_failed;
   fd = NULL;
 
   // CMVN

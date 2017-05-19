@@ -5,6 +5,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <memory>
 
 #ifdef __cplusplus
 #define POCKETKALDI_EXPORT extern "C"
@@ -14,7 +15,10 @@
 
 #define PK_STATUS_MSGMAX 256
 
-typedef struct pk_fst_t pk_fst_t;
+namespace pocketkaldi {
+class Fst;
+}  // namespace pocketkaldi
+
 typedef struct pk_am_t pk_am_t;
 typedef struct pk_vector_t pk_vector_t;
 typedef struct pk_transition_t pk_transition_t;
@@ -28,7 +32,7 @@ typedef struct pk_status_t {
 } pk_status_t;
 
 typedef struct pk_t {
-  pk_fst_t *fst;
+  pocketkaldi::Fst *fst;
   pk_am_t *am;
   pk_fbank_t *fbank;
   pk_vector_t *cmvn_global_stats;

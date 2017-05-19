@@ -289,11 +289,13 @@ ReadableFile::~ReadableFile() {
   fd_ = NULL;
 }
 
-void ReadableFile::Open(const std::string &filename, Status *status) {
+Status ReadableFile::Open(const std::string &filename) {
   filename_ = filename;
   fd_ = fopen(filename.c_str(), "rb");
   if (fd_ == NULL) {
-    *status = Status::IOError(util::Format("Unable to open {}", filename));
+    return Status::IOError(util::Format("Unable to open {}", filename));
+  } else {
+    return Status::OK();
   }
 }
 
@@ -325,6 +327,14 @@ bool ReadableFile::ReadLine(std::string *line, Status *status) {
     line->pop_back();
   }
   return true;
+}
+
+Status ReadableFile::Read(void *ptr, int size) {
+  if (1 != fread(ptr, size, 1, fd_)) {
+    return Status::IOError(util::Format("failed to read: {}", filename_));
+  } else {
+    return Status::OK();
+  }
 }
 
 bool ReadableFile::Eof() const {

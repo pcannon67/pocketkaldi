@@ -14,7 +14,7 @@ void TestConf() {
   pocketkaldi::Configuration conf;
 
   // Read
-  conf.Read(conf_file, &status);
+  status = conf.Read(conf_file);
   puts(status.what().c_str());
   assert(status.ok());
 
@@ -25,7 +25,7 @@ void TestConf() {
   // Check the path
   pocketkaldi::util::ReadableFile fd;
   std::string line;
-  fd.Open(path, &status);
+  status = fd.Open(path);
   assert(status.ok());
   assert(fd.ReadLine(&line, &status));
   assert(line == "Success!");

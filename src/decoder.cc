@@ -26,7 +26,7 @@ Decoder::Hypothesis::Hypothesis(const std::vector<int> &words, float weight):
     weight_(weight) {
 }
 
-Decoder::Decoder(const pk_fst_t *fst):
+Decoder::Decoder(const Fst *fst):
     fst_(fst),
     beam_(16.0),
     state_idx_(kBeamSize * 4) {
@@ -82,10 +82,10 @@ void Decoder::InitDecoding() {
   prev_toks_.clear();
 
   // Initialize decoding:
-  int start_state = pk_fst_startstate(fst_);
+  int start_state = fst_->start_state();
   assert(start_state >= 0);
   
-  pk_fst_arc_t dummy_arc;
+  Fst::Arc dummy_arc;
   dummy_arc.input_label = 0;
   dummy_arc.output_label = 0;
   dummy_arc.next_state = start_state;
@@ -97,7 +97,7 @@ void Decoder::InitDecoding() {
 }
 
 bool Decoder::InsertTok(
-    const pk_fst_arc_t *arc,
+    const Fst::Arc *arc,
     OLabel *prev_olabel,
     float cost) {
   int next_state = arc->next_state;
@@ -192,10 +192,9 @@ void Decoder::ProcessNonemitting(double cutoff) {
     int tok_idx = state_idx_.Find(state, kNotExist);
     assert(tok_idx != kNotExist);
 
-    pk_fst_iter_t arc_iter;
-    pk_fst_iterate_arc(fst_, state, &arc_iter);
-    const pk_fst_arc_t *arc = nullptr;
-    while ((arc = pk_fst_iter_next(&arc_iter)) != nullptr) {
+    Fst::ArcIterator arc_iter = fst_->IterateArcs(state);
+    const Fst::Arc *arc = nullptr;
+    while ((arc = arc_iter.Next()) != nullptr) {
       // propagate nonemitting only...
       if (arc->input_label != 0) continue;
 
@@ -233,11 +232,10 @@ float Decoder::ProcessEmitting(pk_decodable_t *decodable) {
 
   // First process the best token to get a hopefully
   // reasonably tight bound on the next cutoff.
-  float state = best_tok->state();
-  pk_fst_iter_t arc_iter;
-  pk_fst_iterate_arc(fst_, state, &arc_iter);
-  const pk_fst_arc_t *arc = nullptr;
-  while ((arc = pk_fst_iter_next(&arc_iter)) != nullptr) {
+  int state = best_tok->state();
+  Fst::ArcIterator arc_iter = fst_->IterateArcs(state);
+  const Fst::Arc *arc = nullptr;
+  while ((arc = arc_iter.Next()) != nullptr) {
     if (arc->input_label == 0) continue;
 
     float acoustic_cost = -pk_decodable_loglikelihood(
@@ -259,10 +257,9 @@ float Decoder::ProcessEmitting(pk_decodable_t *decodable) {
     // So there are only top beam_size toks less than weight_cutoff
     if (from_tok->cost() > weight_cutoff) continue;
 
-    pk_fst_iter_t arc_iter;
-    pk_fst_iterate_arc(fst_, state, &arc_iter);
-    const pk_fst_arc_t *arc = nullptr;
-    while ((arc = pk_fst_iter_next(&arc_iter)) != nullptr) {
+    Fst::ArcIterator arc_iter = fst_->IterateArcs(state);
+    const Fst::Arc *arc = nullptr;
+    while ((arc = arc_iter.Next()) != nullptr) {
       if (arc->input_label == 0) continue;
 
       float ac_cost = -pk_decodable_loglikelihood(
@@ -303,7 +300,7 @@ Decoder::Hypothesis Decoder::BestPath() {
   for (int i = 0; i < toks_.size(); ++i) {
     Token *tok = toks_[i];
     int state = tok->state();
-    double cost = tok->cost() + pk_fst_final(fst_, state);
+    double cost = tok->cost() + fst_->final(state);
     if (cost != INFINITY && cost < best_cost) {
       best_cost = cost;
       best_idx = i;
@@ -323,7 +320,7 @@ Decoder::Hypothesis Decoder::BestPath() {
   }
 
   weight = best_cost;
-  weight += pk_fst_final(fst_, best_tok->state());
+  weight += fst_->final(best_tok->state());
 
   return Hypothesis(words, weight);
 }

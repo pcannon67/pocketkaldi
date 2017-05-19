@@ -2,6 +2,7 @@ import fst
 import sys
 import struct
 
+SECTION_NAME = b"pk::fst_0"
 
 def print_usage():
     print('Usage: python3 {} <openfst-binfile> <output-binfile> [text|binary]'.format(sys.argv[0]))
@@ -53,8 +54,12 @@ assert(len(state_arcidx) == len(t) and len(finals) == len(t))
 
 if output_binary:
     with open(sys.argv[2], 'wb') as fd:
-        # Magic number
-        fd.write(struct.pack("<i", 0x3323))
+        # Section name
+        fd.write(SECTION_NAME.ljust(32, b'\0'))
+        
+        # Section size
+        section_size = 12 + 8 * len(finals) + 16 * len(arcs)
+        fd.write(struct.pack("<i", section_size))
         
         fd.write(struct.pack("<i", state_number))
         fd.write(struct.pack("<i", len(arcs)))

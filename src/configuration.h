@@ -14,7 +14,7 @@ class Configuration {
  public:
   // Read configuration from filename. If success, `status->ok` will be true
   // Otherwise, status->message will contain error message
-  void Read(const std::string &filename, Status *status);
+  Status Read(const std::string &filename);
 
   // Get a path from configuration file. If the path is a relative path, return
   // a path combines path to configuatin file and path itself. If the key not

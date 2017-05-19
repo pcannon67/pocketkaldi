@@ -9,19 +9,20 @@
 
 namespace pocketkaldi {
 
-void Configuration::Read(const std::string &filename, Status *status) {
+Status Configuration::Read(const std::string &filename) {
   util::ReadableFile fd;
   std::string line;
   std::vector<std::string> fields;
   std::string key;
   std::string value;
+  Status status;
 
   filename_ = filename;
-  fd.Open(filename, status);
-  if (!status->ok()) goto Configuration_Read_Failed;
+  status = fd.Open(filename);
+  if (!status.ok()) return status;
 
   // Read line by line
-  while (!fd.Eof() && fd.ReadLine(&line, status)) {
+  while (!fd.Eof() && fd.ReadLine(&line, &status)) {
     line = util::Trim(line);
 
     // Empty line and comment line
@@ -30,27 +31,24 @@ void Configuration::Read(const std::string &filename, Status *status) {
     // Parse the line with key=value format
     fields = util::Split(line, "=");
     if (fields.size() != 2) {
-      *status = Status::Corruption(util::Format(
+      return Status::Corruption(util::Format(
           "Unexpected line in {}: {}",
           filename_,
           line));
-      goto Configuration_Read_Failed;
     }
     key = util::Tolower(util::Trim(fields[0]));
     value = util::Trim(fields[1]);
     if (value.empty()) {
-      *status = Status::Corruption(util::Format(
+      return Status::Corruption(util::Format(
           "Value cound not be empty: {}",
           filename_,
           line));
-      goto Configuration_Read_Failed;
     }
 
     table_[key] = value;
   }
 
-Configuration_Read_Failed:
-  return;
+  return status;
 }
 
 std::string Configuration::GetPath(

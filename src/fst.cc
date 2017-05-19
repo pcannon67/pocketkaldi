@@ -5,129 +5,125 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <array>
 
-void pk_fst_init(pk_fst_t *self) {
-  self->start_state = 0;
-  self->state_number = 0;
-  self->arc_number = 0;
+namespace pocketkaldi {
 
-  self->arc = NULL;
-  self->arc_index = NULL;
-  self->final = NULL;
+Fst::Fst() : start_state_(0) {}
+Fst::ArcIterator::ArcIterator(int base, int total, const Arc *arcs) :
+    base_(base),
+    cnt_pos_(0),
+    total_(total),
+    arcs_(arcs) {
+}
+Fst::ArcIterator::~ArcIterator() {
+  arcs_ = nullptr;
+  base_ = 0;
+  cnt_pos_ = 0;
+  total_ = 0;
 }
 
-void pk_fst_destroy(pk_fst_t *self) {
-  self->start_state = 0;
-  self->state_number = 0;
-  self->arc_number = 0;
+Status Fst::Read(util::ReadableFile *fd) {
+  Status status;
 
-  free(self->arc);
-  self->arc = NULL;
-  free(self->arc_index);
-  self->arc_index = NULL;
-  free(self->final);
-  self->final = NULL;
-}
-
-void pk_fst_read(
-    pk_fst_t *self,
-    pk_readable_t *fd,
-    pk_status_t *status) {
-  // Check magic number
-  int32_t magic_number = pk_readable_readint32(fd, status);
-  if (!status->ok) goto pk_fst_read_failed;
-  if (magic_number != 0x3323) {
-    PK_STATUS_CORRUPTED(status, "%s", fd->filename);
-    goto pk_fst_read_failed;
+  // Checks section name
+  int section_size;
+  std::array<char, 32> section_name;
+  status = fd->Read(section_name.data(), 32);
+  if (!status.ok()) return status;
+  section_name.back() = '\0';
+  if (strcmp(section_name.data(), kSectionName) != 0) {
+    return Status::Corruption(util::Format(
+        "section_name == '{}' expected, but '{}' found",
+        kSectionName,
+        section_name.data()));
   }
+  status = fd->ReadValue<int32_t>(&section_size);
+  if (!status.ok()) return status;
 
-  // Read metadata and check filesize
-  self->state_number = pk_readable_readint32(fd, status);
-  if (!status->ok) goto pk_fst_read_failed;
-  self->arc_number = pk_readable_readint32(fd, status);
-  if (!status->ok) goto pk_fst_read_failed;
-  self->start_state = pk_readable_readint32(fd, status);
-  if (!status->ok) goto pk_fst_read_failed;
+  // Metadata
+  int32_t state_number,
+          arc_number,
+          start_state;
+  status = fd->ReadValue<int32_t>(&state_number);
+  if (!status.ok()) return status;
+  status = fd->ReadValue<int32_t>(&arc_number);
+  if (!status.ok()) return status;  
+  status = fd->ReadValue<int32_t>(&start_state);
+  if (!status.ok()) return status;  
+  start_state_ = start_state;
+
+  // Check section size
+  int expected_section_size =
+      sizeof(state_number) +
+      sizeof(arc_number) +
+      sizeof(start_state) +
+      state_number * (sizeof(final_.front()) + sizeof(state_idx_.front())) +
+      arc_number * sizeof(Arc);
+  if (expected_section_size != section_size) {
+    return Status::Corruption(util::Format(
+        "section_size == {} expected, but {} found",
+        expected_section_size,
+        section_size));
+  }
 
   // Final weight
-  self->final = (float *)malloc(self->state_number * sizeof(float));
-  for (int idx = 0; idx < self->state_number; ++idx) {
-    self->final[idx] = pk_readable_readfloat(fd, status);
-    if (!status->ok) goto pk_fst_read_failed;
-  }
+  final_.resize(state_number);
+  status = fd->Read(final_.data(), sizeof(final_.front()) * final_.size());
+  if (!status.ok()) return status; 
 
-  self->arc_index = (int32_t *)malloc(self->state_number * sizeof(int32_t));
-  for (int idx = 0; idx < self->state_number; ++idx) {
-    self->arc_index[idx] = pk_readable_readint32(fd, status);
-    if (!status->ok) goto pk_fst_read_failed;
-  }
+  // State idx
+  state_idx_.resize(state_number);
+  status = fd->Read(
+      state_idx_.data(),
+      sizeof(state_idx_.front()) * state_idx_.size());
+  if (!status.ok()) return status;
 
-  self->arc = (pk_fst_arc_t *)malloc(self->arc_number * sizeof(pk_fst_arc_t));
-  for (int idx = 0; idx < self->arc_number; ++idx) {
-    self->arc[idx].next_state = pk_readable_readint32(fd, status);
-    if (!status->ok) goto pk_fst_read_failed;
-    self->arc[idx].input_label = pk_readable_readint32(fd, status);
-    if (!status->ok) goto pk_fst_read_failed;
-    self->arc[idx].output_label = pk_readable_readint32(fd, status);
-    if (!status->ok) goto pk_fst_read_failed;
-    self->arc[idx].weight = pk_readable_readfloat(fd, status);
-    if (!status->ok) goto pk_fst_read_failed;
-  }
+  // Arcs
+  arcs_.resize(arc_number);
+  status = fd->Read(arcs_.data(), sizeof(arcs_.front()) * arcs_.size());
+  if (!status.ok()) return status;
 
-  if (false) {
-pk_fst_read_failed:
-    pk_fst_destroy(self);
-  }
+  // Success
+  return status;
 }
 
-// Calcuate the number of outcoming arcs for state
-static int calc_state_outcomming_arc_number(const pk_fst_t *fst, int state) {
-  int32_t *arcidx = fst->arc_index;
-  int state_number = fst->state_number;
-  int state_idx = arcidx[state];
-
+int Fst::CountArcs(int state) const {
+  int state_idx = state_idx_[state];
   if (state_idx < 0) return 0;
+
   int count;
   int next_state = -1;
 
   // Find the next state that have outcoming arcs
-  for (int check_state = state + 1; check_state < state_number; ++check_state) {
-    if (arcidx[check_state] > 0) {
-      next_state = check_state;
+  for (int chk_state = state + 1; chk_state < state_idx_.size(); ++chk_state) {
+    if (state_idx_[chk_state] > 0) {
+      next_state = chk_state;
       break;
     }
   }
-  int next_idx = next_state >= 0 ? arcidx[next_state] : fst->arc_number;
+  int next_idx = next_state >= 0 ? state_idx_[next_state] : arcs_.size();
   return next_idx - state_idx;
 }
 
-const pk_fst_arc_t *pk_fst_iter_next(pk_fst_iter_t *self) {
-  if (self->offset < self->total) {
-    pk_fst_arc_t *arc = &(self->fst->arc[self->base_idx + self->offset]);
-    ++self->offset;
+Fst::ArcIterator Fst::IterateArcs(int state) const {
+  assert(state < state_idx_.size() && state >= 0);
+  int total_arcs = CountArcs(state);
+  return ArcIterator(
+    state_idx_[state],
+    total_arcs,
+    arcs_.data());
+}
+
+const Fst::Arc *Fst::ArcIterator::Next() {
+  if (cnt_pos_ < total_) {
+    const Arc *arc = &arcs_[base_ + cnt_pos_];
+    ++cnt_pos_;
     return arc;
   } else {
-    return NULL;
+    return nullptr;
   }
 }
 
-void pk_fst_iterate_arc(
-    const pk_fst_t *self,
-    int state,
-    pk_fst_iter_t *iter) {
-  assert(state < self->state_number && "State index out-of-boundary");
-  iter->fst = self;
-  iter->total = calc_state_outcomming_arc_number(self, state);
-  assert(iter->total >= 0);
-  iter->offset = 0;
-  iter->base_idx = self->arc_index[state];
-}
-
-int pk_fst_startstate(const pk_fst_t *self) {
-  return self->start_state;
-}
-
-float pk_fst_final(const pk_fst_t *self, int state) {
-  assert(state < self->state_number && "State index out-of-boundary");
-  return self->final[state];
-}
+}  // namespace pocketkaldi
