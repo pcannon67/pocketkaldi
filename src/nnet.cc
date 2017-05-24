@@ -5,52 +5,31 @@
 #include <assert.h>
 #include <math.h>
 
-void pk_nnet_layer_linear_destroy(pk_nnet_layer_t *self) {
-  pk_nnet_layer_linear_t *self_linear = (pk_nnet_layer_linear_t *)self;
+namespace pocketkaldi {
 
-  pk_matrix_destroy(&self_linear->W);
-  pk_vector_destroy(&self_linear->b);
-  self_linear->base.propagate = NULL;
-  self_linear->base.destroy = NULL;
+LinearLayer::LinearLayer(const pk_matrix_t *W, const pk_vector_t *b) {
+  assert(b->dim == W->ncol && "linear layer: dimension mismatch in W and b");
+  pk_matrix_init(&W_, 0, 0);
+  pk_vector_init(&b_, 0, NAN);
+  pk_matrix_copy(&W_, W);
+  pk_vector_copy(&b_, b);
 }
 
-void pk_nnet_layer_linear_propagate(
-    const pk_nnet_layer_t *self,
-    const pk_matrix_t *in,
-    pk_matrix_t *out) {
-  pk_nnet_layer_linear_t *self_linear = (pk_nnet_layer_linear_t *)self;
-  pk_matrix_resize(out, self_linear->W.ncol, in->ncol);
-  pk_matrix_matmat(&self_linear->W, in, out);
+LinearLayer::~LinearLayer() {
+  pk_matrix_destroy(&W_);
+  pk_vector_destroy(&b_);
+}
+
+void LinearLayer::Propagate(const pk_matrix_t *in, pk_matrix_t *out) const {
+  pk_matrix_resize(out, W_.ncol, in->ncol);
+  pk_matrix_matmat(&W_, in, out);
   for (int col_idx = 0; col_idx < out->ncol; ++col_idx) {
     pk_vector_t col = pk_matrix_getcol(out, col_idx);
-    pk_vector_add(&col, &self_linear->b);
+    pk_vector_add(&col, &b_);
   }
-  
 }
 
-pk_nnet_layer_t *pk_nnet_layer_linear_init(
-    pk_nnet_layer_linear_t *self,
-    const pk_matrix_t *W,
-    const pk_vector_t *b) {
-  assert(b->dim == W->ncol && "linear layer: dimension mismatch in W and b");
-
-  pk_matrix_init(&self->W, 0, 0);
-  pk_vector_init(&self->b, 0, NAN);
-  pk_matrix_copy(&self->W, W);
-  pk_vector_copy(&self->b, b);
-
-  self->base.destroy = &pk_nnet_layer_linear_destroy;
-  self->base.propagate = &pk_nnet_layer_linear_propagate;
-
-  return (pk_nnet_layer_t *)self;
-}
-
-void pk_nnet_layer_softmax_propagate(
-    const pk_nnet_layer_t *self,
-    const pk_matrix_t *in,
-    pk_matrix_t *out) {
-  PK_UNUSED(self);
-
+void SoftmaxLayer::Propagate(const pk_matrix_t *in, pk_matrix_t *out) const {
   pk_matrix_resize(out, in->nrow, in->ncol);
   for (int col_idx = 0; col_idx < in->ncol; ++col_idx) {
     pk_vector_t col_in = pk_matrix_getcol(in, col_idx);
@@ -66,22 +45,9 @@ void pk_nnet_layer_softmax_propagate(
       col_out.data[i] /= sum;
     }
   }
-
 }
 
-pk_nnet_layer_t *pk_nnet_layer_softmax_init(pk_nnet_layer_softmax_t *self) {
-  self->base.destroy = NULL;
-  self->base.propagate = &pk_nnet_layer_softmax_propagate;
-
-  return (pk_nnet_layer_t *)self;
-}
-
-void pk_nnet_layer_relu_propagate(
-    const pk_nnet_layer_t *self,
-    const pk_matrix_t *in,
-    pk_matrix_t *out) {
-  PK_UNUSED(self);
-
+void ReLULayer::Propagate(const pk_matrix_t *in, pk_matrix_t *out) const {
   pk_matrix_resize(out, in->nrow, in->ncol);
   for (int col_idx = 0; col_idx < in->ncol; ++col_idx) {
     pk_vector_t col_in = pk_matrix_getcol(in, col_idx);
@@ -93,20 +59,8 @@ void pk_nnet_layer_relu_propagate(
   }
 }
 
-pk_nnet_layer_t *pk_nnet_layer_relu_init(pk_nnet_layer_relu_t *self) {
-  self->base.destroy = NULL;
-  self->base.propagate = &pk_nnet_layer_relu_propagate;
-
-  return (pk_nnet_layer_t *)self;
-}
-
-void pk_nnet_layer_normalize_propagate(
-    const pk_nnet_layer_t *self,
-    const pk_matrix_t *in,
-    pk_matrix_t *out) {
-  PK_UNUSED(self);
+void NormalizeLayer::Propagate(const pk_matrix_t *in, pk_matrix_t *out) const {
   float D = in->nrow;
-
   pk_matrix_resize(out, in->nrow, in->ncol);
   for (int col_idx = 0; col_idx < in->ncol; ++col_idx) {
     pk_vector_t col_in = pk_matrix_getcol(in, col_idx);
@@ -123,27 +77,13 @@ void pk_nnet_layer_normalize_propagate(
   }
 }
 
-pk_nnet_layer_t *pk_nnet_layer_normalize_init(pk_nnet_layer_normalize_t *self) {
-  self->base.destroy = NULL;
-  self->base.propagate = &pk_nnet_layer_normalize_propagate;
-
-  return (pk_nnet_layer_t *)self;
+Nnet::Nnet() {
 }
 
-void pk_nnet_init(pk_nnet_t *self) {
-  self->layers = NULL;
-  self->num_layers = 0;
-}
+Status Nnet::ReadLayer(pk_readable_t *fd) {
+  pk_status_t status;
+  pk_status_init(&status);
 
-// Reads a layer from fd, returns a pointer to that layer. And to free this 
-// pointer, it should call pointer->destroy(pointer) first when pointer != NULL.
-// Then call free to free it. When failed, status->ok == false
-static pk_nnet_layer_t *read_layer(pk_readable_t *fd, pk_status_t *status) {
-  pk_nnet_layer_linear_t *linear_layer = NULL;
-  pk_nnet_layer_relu_t *relu_layer = NULL;
-  pk_nnet_layer_normalize_t *norm_layer = NULL;
-  pk_nnet_layer_softmax_t *softmax_layer = NULL;
-  pk_nnet_layer_t *layer = NULL;
   float scale;
   int layer_type;
   int expected_size;
@@ -158,20 +98,19 @@ static pk_nnet_layer_t *read_layer(pk_readable_t *fd, pk_status_t *status) {
   int section_size = pk_readable_readsectionhead(
       fd,
       PK_NNET_LAYER_SECTION,
-      status);
-  if (!status->ok) goto read_layer_failed;
+      &status);
+  if (!status.ok) goto read_layer_failed;
   pk_bytebuffer_reset(&bytebuffer, section_size);
 
-  pk_readable_readbuffer(fd, &bytebuffer, status);
-  if (!status->ok) goto read_layer_failed;
+  pk_readable_readbuffer(fd, &bytebuffer, &status);
+  if (!status.ok) goto read_layer_failed;
   layer_type = pk_bytebuffer_readint32(&bytebuffer);
 
   // Check size of this section
   expected_size = 4;
-  if (layer_type == PK_NNET_ADD_LAYER) expected_size = 8;
   if (expected_size != section_size) {
     PK_STATUS_CORRUPTED(
-        status,
+        &status,
         "read_layer: section_size == %d expected, but %d found (%s)",
         expected_size,
         section_size,
@@ -181,104 +120,81 @@ static pk_nnet_layer_t *read_layer(pk_readable_t *fd, pk_status_t *status) {
 
   // Read additional parameters and initialize layer
   scale = 0.0f;
+  LinearLayer *layer;
   switch (layer_type) {
-  case PK_NNET_LINEAR_LAYER:
-    pk_matrix_read(&W, fd, status);
-    if (!status->ok) goto read_layer_failed;
+  case Layer::kLinear:
+    pk_matrix_read(&W, fd, &status);
+    pk_vector_read(&b, fd, &status);
 
-    pk_vector_read(&b, fd, status);
-    if (!status->ok) goto read_layer_failed;
-
-    linear_layer = (pk_nnet_layer_linear_t *)malloc(
-        sizeof(pk_nnet_layer_linear_t));
-    layer = pk_nnet_layer_linear_init(linear_layer, &W, &b);
+    layers_.emplace_back(new LinearLayer(&W, &b));
     break;
-  case PK_NNET_RELU_LAYER:
-    relu_layer = (pk_nnet_layer_relu_t *)malloc(
-        sizeof(pk_nnet_layer_relu_t));
-    layer = pk_nnet_layer_relu_init(relu_layer);
+  case Layer::kReLU:
+    layers_.emplace_back(new ReLULayer());
     break;
-  case PK_NNET_NORMALIZE_LAYER:
-    norm_layer = (pk_nnet_layer_normalize_t *)malloc(
-        sizeof(pk_nnet_layer_normalize_t));
-    layer = pk_nnet_layer_normalize_init(norm_layer);
+  case Layer::kNormalize:
+    layers_.emplace_back(new NormalizeLayer());
     break;
-  case PK_NNET_SOFTMAX_LAYER:
-    softmax_layer = (pk_nnet_layer_softmax_t *)malloc(
-        sizeof(pk_nnet_layer_softmax_t));
-    layer = pk_nnet_layer_softmax_init(softmax_layer);
+  case Layer::kSoftmax:
+    layers_.emplace_back(new SoftmaxLayer());
     break;
   default:
     PK_STATUS_CORRUPTED(
-        status,
+        &status,
         "read_layer: unexpected layer_type %d (%s)",
-        read_layer,
+        layer_type,
         fd->filename);
     goto read_layer_failed;
   }
 
   if (false) {
 read_layer_failed:
-    if (layer != NULL) {
-      if (layer->destroy) layer->destroy(layer);
-      layer->destroy = NULL;
-      layer->propagate = NULL;
-      free(layer);
-    }
-    layer = NULL;
+    return Status::IOError(status.message);
   }
 
   pk_vector_destroy(&b);
   pk_matrix_destroy(&W);
   pk_bytebuffer_destroy(&bytebuffer);
 
-  return layer;
+  return Status::OK();
 }
 
-void pk_nnet_read(pk_nnet_t *self, pk_readable_t *fd, pk_status_t *status) {
+Status Nnet::Read(pk_readable_t *fd) {
+  Status vn_status;
+  pk_status_t status;
   int num_layers;
+  int section_size;
   
   pk_bytebuffer_t bytebuffer;
   pk_bytebuffer_init(&bytebuffer);
+  pk_status_init(&status);
 
-  int section_size = pk_readable_readsectionhead(
+  section_size = pk_readable_readsectionhead(
       fd,
       PK_NNET_SECTION,
-      status);
-  if (!status->ok) goto pk_nnet_read_failed;
+      &status);
+  if (!status.ok) return Status::IOError(status.message);
   pk_bytebuffer_reset(&bytebuffer, section_size);
 
-  pk_readable_readbuffer(fd, &bytebuffer, status);
-  if (!status->ok) goto pk_nnet_read_failed;
+  pk_readable_readbuffer(fd, &bytebuffer, &status);
+  if (!status.ok) return Status::IOError(status.message);
   num_layers = pk_bytebuffer_readint32(&bytebuffer);
-
-  // Initialize the layer pointers
-  self->layers = (pk_nnet_layer_t **)malloc(
-      sizeof(pk_nnet_layer_t) * num_layers);
-  for (int layer_idx = 0; layer_idx < num_layers; ++layer_idx) {
-    self->layers[layer_idx] = NULL;
-  }
-  self->num_layers = num_layers;
 
   // Read each layers
   for (int layer_idx = 0; layer_idx < num_layers; ++layer_idx) {
-    pk_nnet_layer_t *layer = read_layer(fd, status);
-    if (!status->ok) goto pk_nnet_read_failed;
-    self->layers[layer_idx] = layer;
+    vn_status = ReadLayer(fd);
+    if (!vn_status.ok()) goto pk_nnet_read_failed;
   }
 
   if (false) {
 pk_nnet_read_failed:
-    pk_nnet_destroy(self);
+    return Status::IOError(status.message);
   }
   
   pk_bytebuffer_destroy(&bytebuffer);
+  return Status::OK();
 }
 
-void pk_nnet_propagate(
-    const pk_nnet_t *self,
-    const pk_matrix_t *in,
-    pk_matrix_t *out) {
+void Nnet::Propagate(const pk_matrix_t *in, pk_matrix_t *out) const {
   pk_matrix_t *x = NULL,
               *y = NULL,
               *t = NULL,
@@ -289,8 +205,8 @@ void pk_nnet_propagate(
   y = &forward_data[1];
 
   pk_matrix_copy(x, in);
-  for (int layer_idx = 0; layer_idx < self->num_layers; ++layer_idx) {
-    self->layers[layer_idx]->propagate(self->layers[layer_idx], x, y);
+  for (const std::unique_ptr<Layer> &layer : layers_) {
+    layer->Propagate(x, y);
 
     // Swap x and y
     t = x;
@@ -303,17 +219,4 @@ void pk_nnet_propagate(
   pk_matrix_destroy(&forward_data[1]);
 }
 
-void pk_nnet_destroy(pk_nnet_t *self) {
-  for (int layer_idx = 0; layer_idx < self->num_layers; ++layer_idx) {
-    pk_nnet_layer_t *layer = self->layers[layer_idx];
-    if (layer == NULL) continue;
-
-    if (layer->destroy) layer->destroy(layer);
-    layer->destroy = NULL;
-    layer->propagate = NULL;
-    free(layer);
-    self->layers[layer_idx] = NULL;
-  }
-  free(self->layers);
-  self->num_layers = 0;
-}
+}  // namespace pocketkaldi

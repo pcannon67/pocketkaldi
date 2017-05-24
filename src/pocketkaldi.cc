@@ -45,7 +45,7 @@ void pk_destroy(pk_t *self) {
 
   if (self->am) {
     pk_am_destroy(self->am);
-    free(self->am);
+    delete self->am;
     self->am = NULL;
   }
 
@@ -144,7 +144,7 @@ void pk_load(pk_t *self, const char *filename, pk_status_t *status) {
     goto pk_load_failed;
   }
   fd = pk_readable_open(fn.c_str(), status);
-  self->am = (pk_am_t *)malloc(sizeof(pk_am_t));
+  self->am = new pk_am_t;
   pk_am_init(self->am);
   pk_am_read(self->am, fd, status);
   if (!status->ok) goto pk_load_failed;

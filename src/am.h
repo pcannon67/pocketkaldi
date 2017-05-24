@@ -8,9 +8,11 @@
 
 #define PK_AM_SECTION "AM~0"
 
+using pocketkaldi::Nnet;
+
 // AM struct
 typedef struct pk_am_t {
-  pk_nnet_t nnet;
+  Nnet nnet;
   pk_vector_t log_prior;
   int left_context;
   int right_context;

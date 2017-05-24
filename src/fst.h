@@ -38,7 +38,7 @@ public:
   };
 
   // Section name in binary file
-  static constexpr const char *kSectionName = "pk::fst_0";
+  static const char *kSectionName;
 
   Fst();
 

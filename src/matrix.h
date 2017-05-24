@@ -9,6 +9,7 @@
 #define PK_MATRIX_SECTION "MAT0"
 
 #include <stdio.h>
+#include <math.h>
 #include "pocketkaldi.h"
 #include "util.h"
 #include "vector.h"
@@ -62,5 +63,29 @@ void pk_matrix_destroy(pk_matrix_t *self);
 // needed. 
 POCKETKALDI_EXPORT
 pk_vector_t pk_matrix_getcol(const pk_matrix_t *self, int col);
+
+namespace pocketkaldi {
+
+// A float matrix class
+class Matrix {
+ public:
+  Matrix(int rows, int columns, float fill = NAN);
+
+  // Fill random number (-1, 1) into this matrix.
+  void FillRandom();
+
+  // Fill value into this matrix
+  void Fill(float value);
+
+  // Get the reference of an element by column and row
+  float &Element(int row, int column);
+
+ private:
+  float *data_;
+  int rows_;
+  int columns_;
+};
+
+}  // namespace pocketkaldi
 
 #endif  // POCKETKALDI_MATRIX_H_

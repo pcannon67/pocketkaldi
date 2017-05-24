@@ -156,6 +156,7 @@ bool pk_readable_readline(
     *tail = '\0';
     --tail;
   }
+  return true;
 }
 
 int pk_readable_readsectionhead(

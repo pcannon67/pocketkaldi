@@ -17,112 +17,79 @@
 #define PK_NNET_ADD_LAYER 4
 #define PK_NNET_MUL_LAYER 5
 
-typedef struct pk_nnet_layer_t {
-  void (*propagate)(
-      const struct pk_nnet_layer_t *self,
-      const pk_matrix_t *in,
-      pk_matrix_t *out);
-  void (*destroy)(struct pk_nnet_layer_t *self);
-} pk_nnet_layer_t;
+
+namespace pocketkaldi {
+
+// The base class for different type of layers
+class Layer {
+ public:
+  // Kinds of linear types
+  enum {
+    kLinear = 0,
+    kReLU = 1,
+    kNormalize = 2,
+    kSoftmax = 3
+  };
+
+  // Propogate a batch of input vectors through this layer. And the batch of
+  // output vectors are in `out`
+  virtual void Propagate(const pk_matrix_t *in, pk_matrix_t *out) const = 0;
+  virtual ~Layer() {}
+};
 
 // Linear layer: x^T dot W + b
-typedef struct pk_nnet_layer_linear_t {
-  pk_nnet_layer_t base;
-  pk_matrix_t W;
-  pk_vector_t b;
-} pk_nnet_layer_linear_t;
+class LinearLayer : public Layer {
+ public:
+  // Initialize the linear layer with parameter W and b. It just copies the
+  // values from W and b.
+  LinearLayer(const pk_matrix_t *W, const pk_vector_t *b);
+  ~LinearLayer();
+
+  void Propagate(const pk_matrix_t *in, pk_matrix_t *out) const override;
+
+ private:
+  pk_matrix_t W_;
+  pk_vector_t b_;
+};
 
 // Softmax layer
-typedef struct pk_nnet_layer_softmax_t {
-  pk_nnet_layer_t base;
-} pk_nnet_layer_softmax_t;
+class SoftmaxLayer : public Layer {
+ public:
+  void Propagate(const pk_matrix_t *in, pk_matrix_t *out) const override;
+};
 
 // ReLU layer
-typedef struct pk_nnet_layer_relu_t {
-  pk_nnet_layer_t base;
-} pk_nnet_layer_relu_t;
+class ReLULayer : public Layer {
+ public:
+  void Propagate(const pk_matrix_t *in, pk_matrix_t *out) const override;
+};
 
-// Normalize layer: ensure y * y^T == D
-typedef struct pk_nnet_layer_normalize_t {
-  pk_nnet_layer_t base;
-} pk_nnet_layer_normalize_t;
+// Normalize layer
+class NormalizeLayer : public Layer {
+ public:
+  void Propagate(const pk_matrix_t *in, pk_matrix_t *out) const override;
+};
 
-typedef struct pk_nnet_t {
-  pk_nnet_layer_t **layers;
-  int num_layers;
-} pk_nnet_t;
+// The neural network class. It have a stack of different kinds of `Layer`
+// instances. And the batch matrix could be propogate through this neural
+// network using `Propagate` method
+class Nnet {
+ public:
+  Nnet();
 
-// Initialize the linear layer with parameter W and b. It just copies the values
-// from W and b. Then return a pointer of pk_nnet_layer_t, which points to the
-// same address as self.
-POCKETKALDI_EXPORT
-pk_nnet_layer_t *pk_nnet_layer_linear_init(
-    pk_nnet_layer_linear_t *self,
-    const pk_matrix_t *W,
-    const pk_vector_t *b);
+  // Read the nnet from file
+  Status Read(pk_readable_t *fd);
 
-// Destroy the linear layer. It just destroys W and b, and doesn't free the
-// pointer self
-POCKETKALDI_EXPORT
-void pk_nnet_layer_linear_destroy(pk_nnet_layer_t *self);
+  // Propogate batch matrix through this neural network
+  void Propagate(const pk_matrix_t *in, pk_matrix_t *out) const;
 
-// Propagate through the linear layer
-POCKETKALDI_EXPORT
-void pk_nnet_layer_linear_propagate(
-    const pk_nnet_layer_t *self,
-    const pk_matrix_t *in,
-    pk_matrix_t *out);
+ private:
+  std::vector<std::unique_ptr<Layer>> layers_;
 
-// Initialize the softmax layer
-POCKETKALDI_EXPORT
-pk_nnet_layer_t *pk_nnet_layer_softmax_init(pk_nnet_layer_softmax_t *self);
+  // Read a layer from `fd` and store into layers_
+  Status ReadLayer(pk_readable_t *fd);
+};
 
-// Propagate through the softmax layer
-POCKETKALDI_EXPORT
-void pk_nnet_layer_softmax_propagate(
-    const pk_nnet_layer_t *,
-    const pk_matrix_t *in,
-    pk_matrix_t *out);
-
-// Initialize the ReLU layer
-POCKETKALDI_EXPORT
-pk_nnet_layer_t *pk_nnet_layer_relu_init(pk_nnet_layer_relu_t *self);
-
-// Propagate through the ReLU layer
-POCKETKALDI_EXPORT
-void pk_nnet_layer_relu_propagate(
-    const pk_nnet_layer_t *,
-    const pk_matrix_t *in,
-    pk_matrix_t *out);
-
-// Initialize the Normalize layer
-POCKETKALDI_EXPORT
-pk_nnet_layer_t *pk_nnet_layer_normalize_init(pk_nnet_layer_normalize_t *self);
-
-// Propagate through the Normalize layer
-POCKETKALDI_EXPORT
-void pk_nnet_layer_normalize_propagate(
-    const pk_nnet_layer_t *,
-    const pk_matrix_t *in,
-    pk_matrix_t *out);
-
-// Initialize the neural network
-POCKETKALDI_EXPORT
-void pk_nnet_init(pk_nnet_t *self);
-
-// Read the neural network from fd. If failed, status->ok == false
-POCKETKALDI_EXPORT
-void pk_nnet_read(pk_nnet_t *self, pk_readable_t *fd, pk_status_t *status);
-
-// Propagate through the netral network
-POCKETKALDI_EXPORT
-void pk_nnet_propagate(
-    const pk_nnet_t *self,
-    const pk_matrix_t *in,
-    pk_matrix_t *out);
-
-// Destroy the nnet
-POCKETKALDI_EXPORT
-void pk_nnet_destroy(pk_nnet_t *self);
+}  // namespace pocketkaldi
 
 #endif

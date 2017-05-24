@@ -1,17 +1,21 @@
 // Created at 2017-03-22
 
 #include "am.h"
+
+#include "status.h"
 #include "matrix.h"
 #include "math.h"
 
+using pocketkaldi::Status;
+
 void pk_am_init(pk_am_t *self) {
-  pk_nnet_init(&self->nnet);
   pk_vector_init(&self->log_prior, 0, NAN);
   self->left_context = 0;
   self->right_context = 0;
 }
 
 void pk_am_read(pk_am_t *self, pk_readable_t *fd, pk_status_t *status) {
+  Status vn_status;
   pk_bytebuffer_t bytebuffer;
   pk_bytebuffer_init(&bytebuffer);
 
@@ -39,8 +43,8 @@ void pk_am_read(pk_am_t *self, pk_readable_t *fd, pk_status_t *status) {
   self->right_context = pk_bytebuffer_readint32(&bytebuffer);
 
   // Read nnet
-  pk_nnet_read(&self->nnet, fd, status);
-  if (!status->ok) goto pk_am_read_failed;
+  vn_status = self->nnet.Read(fd);
+  if (!vn_status.ok()) goto pk_am_read_failed;
 
   // Read prior and apply log
   pk_vector_read(&self->log_prior, fd, status);
@@ -56,7 +60,6 @@ pk_am_read_failed:
 }
 
 void pk_am_destroy(pk_am_t *self) {
-  pk_nnet_destroy(&self->nnet);
   pk_vector_destroy(&self->log_prior);
   self->left_context = 0;
   self->right_context = 0;
@@ -106,7 +109,7 @@ void pk_am_compute(
   splice_feats(frames, self->left_context, self->right_context, &nn_input);
 
   // Propogate through the neural network
-  pk_nnet_propagate(&self->nnet, &nn_input, loglikelihood);
+  self->nnet.Propagate(&nn_input, loglikelihood);
 
   // Compute log-likelihood
   for (int col_idx = 0; col_idx < loglikelihood->ncol; ++col_idx) {

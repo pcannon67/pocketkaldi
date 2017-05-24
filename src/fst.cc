@@ -10,6 +10,8 @@
 
 namespace pocketkaldi {
 
+const char *Fst::kSectionName = "pk::fst_0";
+
 Fst::Fst() : start_state_(0) {}
 Fst::ArcIterator::ArcIterator(int base, int total, const Arc *arcs) :
     base_(base),
