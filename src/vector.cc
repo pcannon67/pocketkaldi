@@ -3,6 +3,8 @@
 
 #include <math.h>
 #include <cblas.h>
+#include <stdlib.h>
+#include <string.h>
 
 void pk_vector_init(pk_vector_t *self, int dim, float fill_with) {
   self->dim = dim;
@@ -192,3 +194,135 @@ void pk_vector_read(pk_vector_t *self, pk_readable_t *fd, pk_status_t *status) {
 
   pk_bytebuffer_destroy(&content);
 }
+
+namespace pocketkaldi {
+
+template<typename Real>
+inline void Vector<Real>::Init(int dim) {
+  assert(dim >= 0);
+  if (dim == 0) {
+    this->dim_ = 0;
+    this->data_ = NULL;
+    return;
+  }
+  int size;
+  void *data;
+
+  size = dim * sizeof(Real);
+
+  if (posix_memalign(&data, 32, size) == 0) {
+    this->data_ = static_cast<Real*>(data);
+    this->dim_ = dim;
+  } else {
+    throw std::bad_alloc();
+  }
+}
+
+/// Deallocates memory and sets object to empty vector.
+template<typename Real>
+void Vector<Real>::Destroy() {
+  /// we need to free the data block if it was defined
+  if (this->data_ != NULL) free(this->data_);
+  this->data_ = NULL;
+  this->dim_ = 0;
+}
+
+template<typename Real>
+void VectorBase<Real>::Set(Real f) {
+  // Why not use memset here?
+  for (int i = 0; i < dim_; i++) { data_[i] = f; }
+}
+
+template<typename Real>
+void VectorBase<Real>::SetZero() {
+  memset(data_, 0, dim_ * sizeof(Real));
+}
+
+/// Copy data from another vector
+template<typename Real>
+void VectorBase<Real>::CopyFromVec(const VectorBase<Real> &v) {
+  assert(Dim() == v.Dim());
+  if (data_ != v.data_) {
+    memcpy(this->data_, v.data_, dim_ * sizeof(Real));
+  }
+}
+
+template<typename Real>
+Real VectorBase<Real>::VecVec(const VectorBase<Real> &r) const {
+  int r_dim = r.Dim();
+  assert(r_dim == Dim());
+  const Real *l_data = Data();
+  const Real *r_data = r.Data();
+  Real sum = 0.0;
+  for (int i = 0; i < r_dim; i++) {
+    sum += l_data[i] * r_data[i];
+  }
+  return sum;
+}
+
+template<typename Real>
+void Vector<Real>::Swap(Vector<Real> *other) {
+  std::swap(this->data_, other->data_);
+  std::swap(this->dim_, other->dim_);
+}
+
+template<typename Real>
+void Vector<Real>::Resize(const int dim, int resize_type) {
+  // the next block uses recursion to handle what we have to do if
+  // resize_type == kCopyData.
+  if (resize_type == kCopyData) {
+    // nothing to copy.
+    if (this->data_ == NULL || dim == 0) resize_type = kSetZero;  
+    else if (this->dim_ == dim) { return; } // nothing to do.
+    else {
+      // set tmp to a vector of the desired size.
+      Vector<Real> tmp(dim, kUndefined);
+      if (dim > this->dim_) {
+        memcpy(tmp.data_, this->data_, sizeof(Real)*this->dim_);
+        memset(tmp.data_ + this->dim_, 0, sizeof(Real) * (dim-this->dim_));
+      } else {
+        memcpy(tmp.data_, this->data_, sizeof(Real)*dim);
+      }
+      tmp.Swap(this);
+      // and now let tmp go out of scope, deleting what was in *this.
+      return;
+    }
+  }
+  // At this point, resize_type == kSetZero or kUndefined.
+
+  if (this->data_ != NULL) {
+    if (this->dim_ == dim) {
+      if (resize_type == kSetZero) this->SetZero();
+      return;
+    } else {
+      Destroy();
+    }
+  }
+  Init(dim);
+  if (resize_type == kSetZero) this->SetZero();
+}
+
+template<typename Real>
+int VectorBase<Real>::ApplyFloor(Real floor_val) {
+  int num_floored = 0;
+  for (int i = 0; i < dim_; i++) {
+    if (data_[i] < floor_val) {
+      data_[i] = floor_val;
+      num_floored++;
+    }
+  }
+  return num_floored;
+}
+
+template<typename Real>
+void VectorBase<Real>::ApplyLog() {
+  for (int i = 0; i < dim_; i++) {
+    assert(data_[i] >= 0.0);
+    data_[i] = log(data_[i]);
+  }
+}
+
+template class Vector<float>;
+template class VectorBase<float>;
+
+}  // namespace pocketkaldi

@@ -10,6 +10,8 @@
 #include "matrix.h"
 #include "fbank.h"
 
+using pocketkaldi::Fbank;
+
 // Read a matrix from a text file and store them into mat. nrows is the rows of
 // mat
 std::vector<float> ReadArray(const std::string &filename) {
@@ -44,11 +46,10 @@ void TestOnlineCmvn() {
   assert(status.ok);
 
   // Computes fbank feature
-  pk_fbank_t fbank;
+  Fbank fbank;
   pk_matrix_t fbank_feat;
-  pk_fbank_init(&fbank);
   pk_matrix_init(&fbank_feat, 0, 0);
-  pk_fbank_compute(&fbank, &pcm_data, &fbank_feat);
+  fbank.Compute(&pcm_data, &fbank_feat);
 
   // Read global stats from file
   pk_readable_t *fd = pk_readable_open(global_stats_path.c_str(), &status);
@@ -79,7 +80,6 @@ void TestOnlineCmvn() {
   pk_vector_destroy(&global_stats);
   pk_vector_destroy(&feats);
   pk_matrix_destroy(&fbank_feat);
-  pk_fbank_destroy(&fbank);
 }
 
 int main() {

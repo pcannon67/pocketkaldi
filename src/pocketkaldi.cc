@@ -21,6 +21,7 @@
 #include "configuration.h"
 
 using pocketkaldi::Decoder;
+using pocketkaldi::Fbank;
 
 PKLIST_DEFINE(char, byte_list)
 
@@ -67,11 +68,8 @@ void pk_destroy(pk_t *self) {
     self->symbol_table = NULL;
   }
 
-  if (self->fbank) {
-    pk_fbank_destroy(self->fbank);
-    free(self->fbank);
-    self->fbank = NULL;
-  }
+  delete self->fbank;
+  self->fbank = NULL;
 }
 
 // Pocketkaldi model struct
@@ -168,8 +166,7 @@ void pk_load(pk_t *self, const char *filename, pk_status_t *status) {
   fd = NULL;
 
   // Initialize fbank feature extractor
-  self->fbank = (pk_fbank_t *)malloc(sizeof(pk_fbank_t));
-  pk_fbank_init(self->fbank);
+  self->fbank = new Fbank();
 
   if (false) {
 pk_load_failed:
@@ -227,7 +224,7 @@ void pk_process(pk_t *recognizer, pk_utterance_t *utt) {
   t = clock();
   pk_matrix_t raw_feats;
   pk_matrix_init(&raw_feats, 0, 0);
-  pk_fbank_compute(recognizer->fbank, &utt->internal->raw_wave, &raw_feats);
+  recognizer->fbank->Compute(&utt->internal->raw_wave, &raw_feats);
   t = clock() - t;
   fputs(pocketkaldi::util::Format("Fbank: {}ms\n", ((float)t) / CLOCKS_PER_SEC  * 1000).c_str(), stderr);
 

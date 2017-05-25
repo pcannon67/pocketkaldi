@@ -20,13 +20,15 @@
 #define PK_STATUS_STIOERROR 1
 #define PK_STATUS_STCORRUPTED 2
 
-#define PK_WARN fprintf
+
 #define PK_UNUSED(x) (void)(x)
 #define PK_MIN(a, b) ((a) < (b) ? (a) : (b))
 
 #define PK_PATHMAX 1024
 
 #define PK_INFO(msg) std::cout << __FILE__ << ": " << (msg) << std::endl;
+#define PK_WARN(msg) std::cout << "WARN: " << __FILE__ << ": " \
+                               << (msg) << std::endl;
 // #define PK_DEBUG(msg) std::cout << __FILE__ << ": " << (msg) << std::endl;
 #define PK_DEBUG(msg)
 

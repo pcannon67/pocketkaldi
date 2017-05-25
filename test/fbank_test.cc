@@ -10,6 +10,8 @@
 #include "pcm_reader.h"
 #include "util.h"
 
+using pocketkaldi::Fbank;
+
 void TestFbank() {
   std::string wav_file = TESTDIR "data/en-us-hello.wav";
   std::string kaldi_featdump = TESTDIR "data/fbankmat_en-us-hello.wav.txt";
@@ -24,12 +26,11 @@ void TestFbank() {
   assert(status.ok);
 
   // Calculate fbank feature
-  pk_fbank_t fbank;
+  Fbank fbank;
   pk_matrix_t fbank_feat;
-  pk_fbank_init(&fbank);
   pk_matrix_init(&fbank_feat, 0, 0);
 
-  pk_fbank_compute(&fbank, &pcm_data, &fbank_feat);
+  fbank.Compute(&pcm_data, &fbank_feat);
   std::vector<float> fbank_featvec;
   for (int i = 0; i < fbank_feat.ncol; ++i) {
     pk_vector_t col = pk_matrix_getcol(&fbank_feat, i);
@@ -52,7 +53,6 @@ void TestFbank() {
 
   pk_vector_destroy(&pcm_data);
   pk_matrix_destroy(&fbank_feat);
-  pk_fbank_destroy(&fbank);
 }
 
 

@@ -6,6 +6,12 @@
 #include <math.h>
 #include "matrix.h"
 
+using pocketkaldi::Layer;
+using pocketkaldi::LinearLayer;
+using pocketkaldi::SoftmaxLayer;
+using pocketkaldi::ReLULayer;
+using pocketkaldi::NormalizeLayer;
+
 bool CheckEq(float a, float b) {
   return fabs(a - b) < 1e-6;
 }
@@ -38,8 +44,7 @@ void TestLinearLayer() {
   }
 
   // Create the linear layer
-  pk_nnet_layer_linear_t linear;
-  pk_nnet_layer_t *layer = pk_nnet_layer_linear_init(&linear, &W, &b);
+  LinearLayer linear(&W, &b);
 
   // Propagation
   // Vector x
@@ -52,7 +57,7 @@ void TestLinearLayer() {
   for (int d = 0; d < x.nrow * x.ncol; ++d) {
     x.data[d] = x_data[d];
   }
-  layer->propagate(layer, &x, &y);
+  linear.Propagate(&x, &y);
 
   // Check results
   assert(y.nrow == 4 && y.ncol == 1);
@@ -62,7 +67,6 @@ void TestLinearLayer() {
   assert(CheckEq(y.data[3], 0.07f));
 
   // Destory
-  layer->destroy(layer);
   pk_matrix_destroy(&x);
   pk_matrix_destroy(&y);
   pk_vector_destroy(&b);
@@ -72,8 +76,7 @@ void TestLinearLayer() {
 
 void TestSoftmaxLayer() {
   // Create the Softmax layer
-  pk_nnet_layer_softmax_t softmax;
-  pk_nnet_layer_t *layer = pk_nnet_layer_softmax_init(&softmax);
+  SoftmaxLayer softmax;
 
   // Propagation
   pk_matrix_t x;
@@ -84,7 +87,7 @@ void TestSoftmaxLayer() {
   for (int d = 0; d < x.nrow * x.ncol; ++d) {
     x.data[d] = x_data[d];
   }
-  layer->propagate(layer, &x, &y);
+  softmax.Propagate(&x, &y);
 
   // Check results
   assert(y.nrow == 4);
@@ -95,15 +98,13 @@ void TestSoftmaxLayer() {
   assert(CheckEq(y.data[3], 0.20577225f));
 
   // Destory
-  if (layer->destroy) layer->destroy(layer);
   pk_matrix_destroy(&x);
   pk_matrix_destroy(&y);
 }
 
 void TestReLULayer() {
   // Create the ReLU layer
-  pk_nnet_layer_relu_t relu;
-  pk_nnet_layer_t *layer = pk_nnet_layer_relu_init(&relu);
+  ReLULayer relu;
 
   // Propagation
   pk_matrix_t x;
@@ -114,7 +115,7 @@ void TestReLULayer() {
   for (int d = 0; d < x.nrow * x.ncol; ++d) {
     x.data[d] = x_data[d];
   }
-  layer->propagate(layer, &x, &y);
+  relu.Propagate(&x, &y);
 
   // Check results
   assert(y.nrow == 4);
@@ -125,15 +126,13 @@ void TestReLULayer() {
   assert(CheckEq(y.data[3], 0.2f));
 
   // Destory
-  if (layer->destroy) layer->destroy(layer);
   pk_matrix_destroy(&x);
   pk_matrix_destroy(&y);
 }
 
 void TestNormalizeLayer() {
   // Create the normalize layer
-  pk_nnet_layer_normalize_t normalize;
-  pk_nnet_layer_t *layer = pk_nnet_layer_normalize_init(&normalize);
+  NormalizeLayer normalize;
 
   // Propagation
   pk_matrix_t x;
@@ -144,7 +143,7 @@ void TestNormalizeLayer() {
   for (int d = 0; d < x.nrow * x.ncol; ++d) {
     x.data[d] = x_data[d];
   }
-  layer->propagate(layer, &x, &y);
+  normalize.Propagate(&x, &y);
 
   // Check results
   double sum = 0.0;
@@ -154,7 +153,6 @@ void TestNormalizeLayer() {
   assert(fabs(sum - 4.0) < 0.0001);
 
   // Destory
-  if (layer->destroy) layer->destroy(layer);
   pk_matrix_destroy(&x);
   pk_matrix_destroy(&y);
 }
