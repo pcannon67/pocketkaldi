@@ -22,6 +22,7 @@
 
 using pocketkaldi::Decoder;
 using pocketkaldi::Fbank;
+using pocketkaldi::CMVN;
 
 PKLIST_DEFINE(char, byte_list)
 
@@ -230,13 +231,12 @@ void pk_process(pk_t *recognizer, pk_utterance_t *utt) {
 
   // Apply CMVN to raw_wave
   t = clock();
-  pk_cmvn_t cmvn;
-  pk_cmvn_init(&cmvn, recognizer->cmvn_global_stats, &raw_feats);
+  CMVN cmvn(recognizer->cmvn_global_stats, &raw_feats);
   pk_matrix_t feats;
   pk_matrix_init(&feats, raw_feats.nrow, raw_feats.ncol);
   for (int frame = 0; frame < raw_feats.ncol; ++frame) {
     pk_vector_t frame_col = pk_matrix_getcol(&feats, frame);
-    pk_cmvn_getframe(&cmvn, frame, &frame_col);
+    cmvn.GetFrame(frame, &frame_col);
   }
   t = clock() - t;
   fprintf(stderr, "CMVN: %lfms\n", ((float)t) / CLOCKS_PER_SEC  * 1000);
@@ -280,7 +280,6 @@ void pk_process(pk_t *recognizer, pk_utterance_t *utt) {
   }
 
   pk_matrix_destroy(&raw_feats);
-  pk_cmvn_destroy(&cmvn);
   pk_matrix_destroy(&feats);
   pk_decodable_destroy(&decodable);
 }

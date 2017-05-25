@@ -322,7 +322,62 @@ void VectorBase<Real>::ApplyLog() {
   }
 }
 
+template<typename Real>
+void VectorBase<Real>::Scale(Real alpha) {
+  for (int i = 0; i < dim_; i++) {
+    data_[i] *= alpha;
+  }
+}
+
+
+
+template<typename Real>
+template<typename OtherReal>
+void VectorBase<Real>::CopyFromVec(const VectorBase<OtherReal> &other) {
+  assert(dim_ == other.Dim());
+  Real * __restrict__  ptr = data_;
+  const OtherReal * __restrict__ other_ptr = other.Data();
+  for (int i = 0; i < dim_; i++) {
+    ptr[i] = other_ptr[i];
+  }
+}
+
+template void VectorBase<float>::CopyFromVec(const VectorBase<double> &other);
+template void VectorBase<double>::CopyFromVec(const VectorBase<float> &other);
+
+template<typename Real>
+template<typename OtherReal>
+void VectorBase<Real>::AddVec(
+    const Real alpha,
+    const VectorBase<OtherReal> &v) {
+  assert(dim_ == v.dim_);
+  // remove __restrict__ if it causes compilation problems.
+  register Real *__restrict__ data = data_;
+  register OtherReal *__restrict__ other_data = v.data_;
+  int dim = dim_;
+  if (alpha != 1.0) {
+    for (int i = 0; i < dim; i++) {
+      data[i] += alpha * other_data[i];
+    }
+  } else {
+    for (int i = 0; i < dim; i++) {
+      data[i] += other_data[i];
+    }
+  }
+}
+
+template
+void VectorBase<float>::AddVec(const float alpha, const VectorBase<double> &v);
+template
+void VectorBase<float>::AddVec(const float alpha, const VectorBase<float> &v);
+template
+void VectorBase<double>::AddVec(const double alpha, const VectorBase<float> &v);
+
+
 template class Vector<float>;
 template class VectorBase<float>;
+template class Vector<double>;
+template class VectorBase<double>;
+
 
 }  // namespace pocketkaldi

@@ -10,35 +10,39 @@
 #define PK_ONLINECMVN_WINDOW 600
 #define PK_ONLINECMVN_GLOBALFRAMES 200
 
-// Stores the intermediate state in computing CMVN of an utterance
+namespace pocketkaldi {
+
+// Computing CMVN of an utterance. It will stores the intermediate state.
 // Currently only mean computation is supported
-typedef struct pk_cmvn_t {
-  const pk_matrix_t *raw_feats;
-  const pk_vector_t *global_stats;
-  pk_vector_t cached_stats;
-  int cached_frame;
-} pk_cmvn_t;
+class CMVN {
+ public:
+  // Initialize online cmvn. global_stats is the accumulated CMVN stats from
+  // training data. raw_feats is raw feature matrix. (global_stats and raw_feats
+  // are borrowed)
+  CMVN(const pk_vector_t *global_stats, const pk_matrix_t *raw_feats);
+  ~CMVN();
 
-// Apply CMVN to frame
-POCKETKALDI_EXPORT
-void pk_cmvn_apply(const pk_vector_t *stats, pk_vector_t *feats);
+  // Gets the fests of frame after appling online CMVN.
+  void GetFrame(int frame, pk_vector_t *feats);
 
-// Initialize online cmvn. global_stats is the accumulated CMVN stats from
-// training data. raw_feats is raw feature matrix. (global_stats and raw_feats
-// are borrowed)
-POCKETKALDI_EXPORT
-void pk_cmvn_init(
-    pk_cmvn_t *self,
-    const pk_vector_t *global_stats,
-    const pk_matrix_t *raw_feats);
+ private:
+  const pk_matrix_t *raw_feats_;
+  Vector<float> global_stats_;
+  Vector<float> cached_stats_;
+  int cached_frame_;
 
-// Destroy online cmvn
-POCKETKALDI_EXPORT
-void pk_cmvn_destroy(pk_cmvn_t *self);
+  // Apply CMVN to frame
+  void Apply(const VectorBase<float> &stats, VectorBase<float> *feats);
 
-// Gets the fests of frame after appling online CMVN.
-POCKETKALDI_EXPORT
-void pk_cmvn_getframe(pk_cmvn_t *self, int frame, pk_vector_t *feats);
+  // Computes the raw CMVN stats for frame. Store it into `stats`
+  void ComputeStats(int frame, Vector<float> *stats);
+
+  // Smooth the CMVN stats "stats", by possibly adding some stats from
+  // global_stats
+  void SmoothStats(Vector<float> *stats);
+};
+
+}  // namepsace pocketkaldi
 
 #endif  // POCKETKALDI_ONLINE_CMVN_H_
 

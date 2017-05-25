@@ -11,6 +11,7 @@
 #include "fbank.h"
 
 using pocketkaldi::Fbank;
+using pocketkaldi::CMVN;
 
 // Read a matrix from a text file and store them into mat. nrows is the rows of
 // mat
@@ -62,20 +63,18 @@ void TestOnlineCmvn() {
   pk_readable_close(fd);
 
   // Initialize cmvn and cmvn instance
-  pk_cmvn_t cmvn;
-  pk_cmvn_init(&cmvn, &global_stats, &fbank_feat);
+  CMVN cmvn(&global_stats, &fbank_feat);
 
   // Apply CMVN
   pk_vector_t feats;
   pk_vector_init(&feats, fbank_feat.nrow, NAN);
   for (int i = 0; i < fbank_feat.ncol; ++i) {
-    pk_cmvn_getframe(&cmvn, i, &feats);
+    cmvn.GetFrame(i, &feats);
     for (int d = 0; d < feats.dim; ++d) {
       assert(feats.data[d] - corr[i * feats.dim + d] < 0.00001);
     }
   }
 
-  pk_cmvn_destroy(&cmvn);
   pk_vector_destroy(&pcm_data);
   pk_vector_destroy(&global_stats);
   pk_vector_destroy(&feats);

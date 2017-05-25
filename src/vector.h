@@ -189,6 +189,10 @@ class VectorBase {
   /// Copy data from another vector (must match own size).
   void CopyFromVec(const VectorBase<Real> &v);
 
+  /// Copy data from another vector of different type (double vs. float)
+  template<typename OtherReal>
+  void CopyFromVec(const VectorBase<OtherReal> &v);
+
   // Returns dot product between this and v.
   Real VecVec(const VectorBase<Real> &v) const;
 
@@ -200,6 +204,16 @@ class VectorBase {
   /// Applies floor to all elements. Returns number of elements floored.
   int ApplyFloor(Real floor_val);
 
+  /// Add vector : *this = *this + alpha * rv (with casting between floats and
+  /// doubles)
+  template<typename OtherReal>
+  void AddVec(const Real alpha, const VectorBase<OtherReal> &v);
+
+  /// Multiplies all elements by this constant.
+  void Scale(Real alpha);
+
+  friend class VectorBase<double>;
+  friend class VectorBase<float>;
  protected:
   /// Destructor;  does not deallocate memory, this is handled by child classes.
   /// This destructor is protected so this object so this object can only be
