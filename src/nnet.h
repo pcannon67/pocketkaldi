@@ -33,7 +33,9 @@ class Layer {
 
   // Propogate a batch of input vectors through this layer. And the batch of
   // output vectors are in `out`
-  virtual void Propagate(const pk_matrix_t *in, pk_matrix_t *out) const = 0;
+  virtual void Propagate(
+      const MatrixBase<float> &in,
+      Matrix<float> *out) const = 0;
   virtual ~Layer() {}
 };
 
@@ -42,32 +44,39 @@ class LinearLayer : public Layer {
  public:
   // Initialize the linear layer with parameter W and b. It just copies the
   // values from W and b.
-  LinearLayer(const pk_matrix_t *W, const pk_vector_t *b);
-  ~LinearLayer();
+  LinearLayer(const MatrixBase<float> &W, const VectorBase<float> &b);
 
-  void Propagate(const pk_matrix_t *in, pk_matrix_t *out) const override;
+  void Propagate(
+      const MatrixBase<float> &in,
+      Matrix<float> *out) const override;
 
  private:
-  pk_matrix_t W_;
-  pk_vector_t b_;
+  Matrix<float> W_;
+  Vector<float> b_;
 };
 
 // Softmax layer
 class SoftmaxLayer : public Layer {
  public:
-  void Propagate(const pk_matrix_t *in, pk_matrix_t *out) const override;
+  void Propagate(
+      const MatrixBase<float> &in,
+      Matrix<float> *out) const override;
 };
 
 // ReLU layer
 class ReLULayer : public Layer {
  public:
-  void Propagate(const pk_matrix_t *in, pk_matrix_t *out) const override;
+  void Propagate(
+      const MatrixBase<float> &in,
+      Matrix<float> *out) const override;
 };
 
 // Normalize layer
 class NormalizeLayer : public Layer {
  public:
-  void Propagate(const pk_matrix_t *in, pk_matrix_t *out) const override;
+  void Propagate(
+      const MatrixBase<float> &in,
+      Matrix<float> *out) const override;
 };
 
 // The neural network class. It have a stack of different kinds of `Layer`
@@ -78,7 +87,7 @@ class Nnet {
   Nnet();
 
   // Read the nnet from file
-  Status Read(pk_readable_t *fd);
+  Status Read(util::ReadableFile *fd);
 
   // Propogate batch matrix through this neural network
   void Propagate(const pk_matrix_t *in, pk_matrix_t *out) const;
@@ -87,7 +96,7 @@ class Nnet {
   std::vector<std::unique_ptr<Layer>> layers_;
 
   // Read a layer from `fd` and store into layers_
-  Status ReadLayer(pk_readable_t *fd);
+  Status ReadLayer(util::ReadableFile *fd);
 };
 
 }  // namespace pocketkaldi

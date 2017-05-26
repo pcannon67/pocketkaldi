@@ -7,7 +7,6 @@
 
 #include <assert.h>
 #include "am.h"
-#include "transition.h"
 #include "matrix.h"
 
 using pocketkaldi::AcousticModel;

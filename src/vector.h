@@ -27,9 +27,11 @@
 #ifndef POCKETKALDI_VECTOR_H_
 #define POCKETKALDI_VECTOR_H_
 
-#include "matrix.h"
 #include "status.h"
 #include "util.h"
+
+
+#define PK_VECTOR_SECTION "VEC0"
 
 typedef struct pk_matrix_t pk_matrix_t;
 
@@ -205,6 +207,10 @@ class VectorBase {
 
   /// Applies floor to all elements. Returns number of elements floored.
   int ApplyFloor(Real floor_val);
+
+  /// Apply soft-max to vector and return normalizer (log sum of exponentials).
+  /// This is the same as: \f$ x(i) = exp(x(i)) / \sum_i exp(x(i)) \f$
+  void ApplySoftMax();
 
   /// Add vector : *this = *this + alpha * rv (with casting between floats and
   /// doubles)

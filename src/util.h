@@ -26,6 +26,10 @@
 
 #define PK_PATHMAX 1024
 
+#define PK_CHECK_STATUS(st_exp) {\
+    Status st = (st_exp);\
+    if (!st.ok()) return st;}
+
 #define PK_INFO(msg) std::cout << __FILE__ << ": " << (msg) << std::endl;
 #define PK_WARN(msg) std::cout << "WARN: " << __FILE__ << ": " \
                                << (msg) << std::endl;

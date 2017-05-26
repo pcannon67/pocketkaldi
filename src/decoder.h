@@ -28,7 +28,6 @@
 #include <vector>
 #include <unordered_map>
 #include <unordered_map>
-#include "transition.h"
 #include "decodable.h"
 #include "hashtable.h"
 #include "vector.h"

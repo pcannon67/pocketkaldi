@@ -16,7 +16,6 @@
 #include "list.h"
 #include "nnet.h"
 #include "symbol_table.h"
-#include "transition.h"
 #include "pcm_reader.h"
 #include "configuration.h"
 

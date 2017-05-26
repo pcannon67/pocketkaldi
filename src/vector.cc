@@ -262,6 +262,21 @@ Real VectorBase<Real>::VecVec(const VectorBase<Real> &r) const {
 }
 
 template<typename Real>
+void VectorBase<Real>::ApplySoftMax() {
+  Real sum = 0;
+
+  for (int i = 0; i < Dim(); ++i) {
+    Real exp_d = expf((*this)(i));
+    (*this)(i) = exp_d;
+    sum += exp_d;
+  }
+
+  for (int i = 0; i < Dim(); ++i) {
+    (*this)(i) /= sum;
+  }
+}
+
+template<typename Real>
 void Vector<Real>::Swap(Vector<Real> *other) {
   std::swap(this->data_, other->data_);
   std::swap(this->dim_, other->dim_);
@@ -415,6 +430,5 @@ template class Vector<double>;
 template class VectorBase<double>;
 template class Vector<int32_t>;
 template class VectorBase<int32_t>;
-
 
 }  // namespace pocketkaldi

@@ -29,21 +29,17 @@ Status AcousticModel::Read(const Configuration &conf) {
   if (!status.ok()) return status;
   pk_status_t c_status;
   pk_status_init(&c_status);
-  pk_readable_t *c_fd = pk_readable_open(nnet_filename.c_str(), &c_status);
-  if (!c_status.ok) return Status::IOError(c_status.message);
-  status = nnet_.Read(c_fd);
-  if (!status.ok()) return status;
-  pk_readable_close(c_fd);
+
+  util::ReadableFile fd;
+  PK_CHECK_STATUS(fd.Open(nnet_filename));
+  PK_CHECK_STATUS(nnet_.Read(&fd));
+  fd.Close();
 
   // Read prior
   std::string prior_filename;
-  util::ReadableFile fd;
-  status = conf.GetPath("prior", &prior_filename);
-  if (!status.ok()) return status;
-  status = fd.Open(prior_filename);
-  if (!status.ok()) return status;
-  status = log_prior_.Read(&fd);
-  if (!status.ok()) return status;
+  PK_CHECK_STATUS(conf.GetPath("prior", &prior_filename));
+  PK_CHECK_STATUS(fd.Open(prior_filename));
+  PK_CHECK_STATUS(log_prior_.Read(&fd));
   log_prior_.ApplyLog();
   fd.Close();
 
