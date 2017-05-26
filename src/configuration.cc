@@ -9,6 +9,8 @@
 
 namespace pocketkaldi {
 
+const std::string Configuration::kDefaultString = "~_$$NOT_Ext_Val$$>-^-<@@_";
+
 Status Configuration::Read(const std::string &filename) {
   util::ReadableFile fd;
   std::string line;
@@ -51,16 +53,12 @@ Status Configuration::Read(const std::string &filename) {
   return status;
 }
 
-std::string Configuration::GetPath(
+std::string Configuration::GetPathOrElse(
     const std::string &key,
     const std::string &default_val) const {
-  std::string lower_key = util::Tolower(key);
-  std::unordered_map<std::string, std::string>::const_iterator
-  it = table_.find(lower_key);
-  if (it == table_.end()) return default_val;
-
   // Currently it is for *nix only
-  std::string path = it->second;
+  std::string path = GetStringOrElse(key, kDefaultString);
+  if (path == kDefaultString) return default_val;
 
   // Return the path directly if it is a absolute path
   if (path.front() == '/') return path; 
@@ -70,6 +68,23 @@ std::string Configuration::GetPath(
   if (pos == std::string::npos) return path; 
   std::string directory(filename_.cbegin(), filename_.cbegin() + pos + 1);
   return directory + path;
+}
+
+std::string Configuration::GetStringOrElse(
+    const std::string &key,
+    const std::string &default_val) const {
+  std::string lower_key = util::Tolower(key);
+  std::unordered_map<std::string, std::string>::const_iterator
+  it = table_.find(lower_key);
+  if (it == table_.end()) return default_val;
+
+  return it->second;
+}
+
+int Configuration::GetIntegerOrElse(const std::string &key, int default_val) const {
+  std::string int_string = GetStringOrElse(key, kDefaultString);
+  if (int_string == kDefaultString) return default_val;
+  return std::stoi(int_string);
 }
 
 }  // namespace pocketkaldi

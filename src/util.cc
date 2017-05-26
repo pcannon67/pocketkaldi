@@ -338,8 +338,30 @@ Status ReadableFile::Read(void *ptr, int size) {
   }
 }
 
+Status ReadableFile::ReadAndVerifyString(const std::string &expected) {
+  std::vector<char> name_buffer(expected.size() + 1);
+
+  Status status = Read(name_buffer.data(), expected.size());
+  if (!status.ok()) return status;
+  name_buffer.back() = '\0';
+  if (expected != name_buffer.data()) {
+    return Status::Corruption(util::Format(
+       "ReadAndVerifyString: '{}' expected but '{}' found in {}",
+       expected,
+       name_buffer.data(),
+       filename_));
+  }
+
+  return Status::OK();
+}
+
 bool ReadableFile::Eof() const {
   return feof(fd_) != 0;
+}
+
+void ReadableFile::Close() {
+  if (fd_ != nullptr) fclose(fd_);
+  fd_ = nullptr;
 }
 
 }  // namespace util

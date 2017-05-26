@@ -110,16 +110,13 @@ class AM:
             self.write_vector(fd, v)
 
     def write(self, filename):
-        with open(filename, 'wb') as fd:
-            fd.write(b"AM~0")
-            fd.write(struct.pack("<i", 8))
-            fd.write(struct.pack("<i", self.left_context))
-            fd.write(struct.pack("<i", self.right_context))
+        with open(filename + ".nnet", 'wb') as fd:
             fd.write(b"NNT0")
             fd.write(struct.pack("<i", 4))
             fd.write(struct.pack("<i", len(self.layers)))
             for layer in self.layers:
                 self.write_layer(fd, layer)
+        with open(filename + ".prior", 'wb') as fd:
             self.write_vector(fd, self.prior)
 
 re_tag = re.compile(r'<(.*?)>(.*?)</(.*?)>', re.DOTALL)

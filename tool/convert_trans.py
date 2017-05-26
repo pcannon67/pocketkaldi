@@ -24,9 +24,8 @@ for line in lines[2: ]:
 
 with open(to_file, 'wb') as fd:
     # VEC section: stats_sum
-    fd.write(b"TRM0")
-    fd.write(struct.pack("<i", len(map_list) * 4 + 8))
-    fd.write(struct.pack("<i", num_pdfs))
-    fd.write(struct.pack("<i", num_transitions))
+    fd.write(b"VEC0")
+    fd.write(struct.pack("<i", len(map_list) * 4 + 4))
+    fd.write(struct.pack("<i", len(map_list)))
     for v in map_list:
         fd.write(struct.pack("<i", v))

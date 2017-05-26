@@ -6,76 +6,73 @@
 #include "matrix.h"
 #include "math.h"
 
-using pocketkaldi::Status;
+namespace pocketkaldi {
 
-void pk_am_init(pk_am_t *self) {
-  pk_vector_init(&self->log_prior, 0, NAN);
-  self->left_context = 0;
-  self->right_context = 0;
+AcousticModel::AcousticModel() :
+    left_context_(0),
+    right_context_(0),
+    num_pdfs_(0) {
 }
 
-void pk_am_read(pk_am_t *self, pk_readable_t *fd, pk_status_t *status) {
-  Status vn_status;
-  pk_bytebuffer_t bytebuffer;
-  pk_bytebuffer_init(&bytebuffer);
+AcousticModel::~AcousticModel() {
+  left_context_ = 0;
+  right_context_ = 0;
+  num_pdfs_ = 0;
+}
 
-  int section_size = pk_readable_readsectionhead(
-      fd,
-      PK_AM_SECTION,
-      status);
-  if (!status->ok) goto pk_am_read_failed;
-  pk_bytebuffer_reset(&bytebuffer, section_size);
-
-  if (section_size != 8) {
-    PK_STATUS_CORRUPTED(
-        status,
-        "pk_am_read: section_size == %d expected, but %d found (%s)",
-        8,
-        section_size,
-        fd->filename);
-    goto pk_am_read_failed;
-  }
-
-  // Read context
-  pk_readable_readbuffer(fd, &bytebuffer, status);
-  if (!status->ok) goto pk_am_read_failed;
-  self->left_context = pk_bytebuffer_readint32(&bytebuffer);
-  self->right_context = pk_bytebuffer_readint32(&bytebuffer);
+Status AcousticModel::Read(const Configuration &conf) {
+  Status status;
 
   // Read nnet
-  vn_status = self->nnet.Read(fd);
-  if (!vn_status.ok()) goto pk_am_read_failed;
+  std::string nnet_filename;
+  status = conf.GetPath("nnet", &nnet_filename);
+  if (!status.ok()) return status;
+  pk_status_t c_status;
+  pk_status_init(&c_status);
+  pk_readable_t *c_fd = pk_readable_open(nnet_filename.c_str(), &c_status);
+  if (!c_status.ok) return Status::IOError(c_status.message);
+  status = nnet_.Read(c_fd);
+  if (!status.ok()) return status;
+  pk_readable_close(c_fd);
 
-  // Read prior and apply log
-  pk_vector_read(&self->log_prior, fd, status);
-  if (!status->ok) goto pk_am_read_failed;
-  pk_vector_log(&self->log_prior);
+  // Read prior
+  std::string prior_filename;
+  util::ReadableFile fd;
+  status = conf.GetPath("prior", &prior_filename);
+  if (!status.ok()) return status;
+  status = fd.Open(prior_filename);
+  if (!status.ok()) return status;
+  status = log_prior_.Read(&fd);
+  if (!status.ok()) return status;
+  log_prior_.ApplyLog();
+  fd.Close();
 
-  if (false) {
-pk_am_read_failed:
-    pk_am_destroy(self);
-  }
+  // Read left and right context
+  status = conf.GetInteger("left_context", &left_context_);
+  status = conf.GetInteger("right_context", &right_context_);
+  if (!status.ok()) return status;
 
-  pk_bytebuffer_destroy(&bytebuffer);
+  // Read tid2pdf_
+  std::string tid2pdf_filename;
+  status = conf.GetInteger("num_pdfs", &num_pdfs_);
+  if (!status.ok()) return status;
+  status = conf.GetPath("tid2pdf", &tid2pdf_filename);
+  if (!status.ok()) return status;
+  status = fd.Open(tid2pdf_filename);
+  if (!status.ok()) return status;
+  status = tid2pdf_.Read(&fd);
+  if (!status.ok()) return status;
+
+  return Status::OK();
 }
 
-void pk_am_destroy(pk_am_t *self) {
-  pk_vector_destroy(&self->log_prior);
-  self->left_context = 0;
-  self->right_context = 0;
-}
-
-// Splice the feature matrix 'feats' with the contexts specified by
-// 'left_context' and 'right_context'. Store the result into 'spliced_feats'
-static void splice_feats(
+void AcousticModel::SpliceFeats(
     const pk_matrix_t *feats,
-    int left_context,
-    int right_context,
     pk_matrix_t *spliced_feats) {
   for (int frame_idx = 0; frame_idx < feats->ncol; ++frame_idx) {
     pk_vector_t spliced_x = pk_matrix_getcol(spliced_feats, frame_idx);
     int offset = 0;
-    for (int f = -left_context; f <= right_context; ++f) {
+    for (int f = -left_context_; f <= right_context_; ++f) {
       int from_frame_idx = frame_idx + f;
 
       // Padding boundary feats
@@ -94,30 +91,31 @@ static void splice_feats(
   }
 }
 
-
-void pk_am_compute(
-    const pk_am_t *self,
+void AcousticModel::Compute(
     const pk_matrix_t *frames,
     pk_matrix_t *loglikelihood) {
   // Prepare spliced feature matrix
   int feats_dim = frames->nrow;
-  int spliced_dim = (self->left_context + self->right_context + 1) * feats_dim;
+  int spliced_dim = (left_context_ + right_context_ + 1) * feats_dim;
   pk_matrix_t nn_input;
   pk_matrix_init(&nn_input, spliced_dim, frames->ncol);
   
   // Splice the feats
-  splice_feats(frames, self->left_context, self->right_context, &nn_input);
+  SpliceFeats(frames, &nn_input);
 
   // Propogate through the neural network
-  self->nnet.Propagate(&nn_input, loglikelihood);
+  nnet_.Propagate(&nn_input, loglikelihood);
 
   // Compute log-likelihood
   for (int col_idx = 0; col_idx < loglikelihood->ncol; ++col_idx) {
-    pk_vector_t col = pk_matrix_getcol(loglikelihood, col_idx);
-    pk_vector_floor(&col, 1.0e-20);
-    pk_vector_log(&col);
-    pk_vector_addscale(&col, -1.0f, &self->log_prior);
+    pk_vector_t c_col = pk_matrix_getcol(loglikelihood, col_idx);
+    SubVector<float> col(c_col.data, c_col.dim);
+    col.ApplyFloor(1.0e-20);
+    col.ApplyLog();
+    col.AddVec(-1.0f, log_prior_);
   }
 
   pk_matrix_destroy(&nn_input);
 }
+
+}  // namespace pocketkaldi

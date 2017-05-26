@@ -17,6 +17,7 @@
 
 namespace pocketkaldi {
 class Fst;
+class AcousticModel;
 class Fbank;
 }  // namespace pocketkaldi
 
@@ -34,10 +35,9 @@ typedef struct pk_status_t {
 
 typedef struct pk_t {
   pocketkaldi::Fst *fst;
-  pk_am_t *am;
+  pocketkaldi::AcousticModel *am;
   pocketkaldi::Fbank *fbank;
   pk_vector_t *cmvn_global_stats;
-  pk_transition_t *trans_model;
   pk_symboltable_t *symbol_table;
 } pk_t;
 

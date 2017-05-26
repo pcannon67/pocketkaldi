@@ -28,6 +28,8 @@
 #define POCKETKALDI_VECTOR_H_
 
 #include "matrix.h"
+#include "status.h"
+#include "util.h"
 
 typedef struct pk_matrix_t pk_matrix_t;
 
@@ -261,6 +263,9 @@ class Vector: public VectorBase<Real> {
   /// if set_zero == false, memory contents are undefined.
   explicit Vector(const int s, int resize_type = kSetZero)
       : VectorBase<Real>() {  Resize(s, resize_type);  }
+
+  // Read vector from ReadableFile
+  Status Read(util::ReadableFile *fd);
 
   /// Swaps the contents of *this and *other.  Shallow swap.
   void Swap(Vector<Real> *other);

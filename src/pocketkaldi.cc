@@ -36,7 +36,6 @@ void pk_init(pk_t *self) {
   self->fst = NULL;
   self->am = NULL;
   self->cmvn_global_stats = NULL;
-  self->trans_model = NULL;
   self->symbol_table = NULL;
   self->fbank = NULL;
 }
@@ -45,22 +44,14 @@ void pk_destroy(pk_t *self) {
   delete self->fst;
   self->fst = nullptr;
 
-  if (self->am) {
-    pk_am_destroy(self->am);
-    delete self->am;
-    self->am = NULL;
-  }
+  delete self->am;
+  self->am = NULL;
+
 
   if (self->cmvn_global_stats) {
     pk_vector_destroy(self->cmvn_global_stats);
     free(self->cmvn_global_stats);
     self->cmvn_global_stats = NULL;
-  }
-
-  if (self->trans_model) {
-    pk_transition_destroy(self->trans_model);
-    free(self->trans_model);
-    self->trans_model = NULL;
   }
 
   if (self->symbol_table) {
@@ -89,7 +80,7 @@ void pk_load(pk_t *self, const char *filename, pk_status_t *status) {
   if (!status_vn.ok()) goto pk_load_failed;
 
   // FST
-  fn = conf.GetPath("fst", "");
+  fn = conf.GetPathOrElse("fst", "");
   if (fn == "") {
     status_vn = pocketkaldi::Status::Corruption(pocketkaldi::util::Format(
         "Unable to find key 'fst' in {}",
@@ -103,7 +94,7 @@ void pk_load(pk_t *self, const char *filename, pk_status_t *status) {
   fd = NULL;
 
   // CMVN
-  fn = conf.GetPath("cmvn_stats", "");
+  fn = conf.GetPathOrElse("cmvn_stats", "");
   if (fn == "") {
     status_vn = pocketkaldi::Status::Corruption(pocketkaldi::util::Format(
         "Unable to find key 'cmvn_stats' in {}",
@@ -118,40 +109,14 @@ void pk_load(pk_t *self, const char *filename, pk_status_t *status) {
   pk_readable_close(fd);
   fd = NULL;
 
-  // TRANS_MODEL
-  fn = conf.GetPath("tm", "");
-  if (fn == "") {
-    status_vn = pocketkaldi::Status::Corruption(pocketkaldi::util::Format(
-        "Unable to find key 'tm' in {}",
-        filename));
-    goto pk_load_failed;
-  }
-  fd = pk_readable_open(fn.c_str(), status);
-  self->trans_model = (pk_transition_t *)malloc(sizeof(pk_transition_t));
-  pk_transition_init(self->trans_model);
-  pk_transition_read(self->trans_model, fd, status);
-  if (!status->ok) goto pk_load_failed;
-  pk_readable_close(fd);
-  fd = NULL;
-
   // AM
-  fn = conf.GetPath("am", "");
-  if (fn == "") {
-    status_vn = pocketkaldi::Status::Corruption(pocketkaldi::util::Format(
-        "Unable to find key 'am' in {}",
-        filename));
-    goto pk_load_failed;
-  }
-  fd = pk_readable_open(fn.c_str(), status);
-  self->am = new pk_am_t;
-  pk_am_init(self->am);
-  pk_am_read(self->am, fd, status);
-  if (!status->ok) goto pk_load_failed;
-  pk_readable_close(fd);
+  self->am = new AcousticModel();
+  status_vn = self->am->Read(conf);
+  if (!status_vn.ok()) goto pk_load_failed;
   fd = NULL;
 
   // SYMBOL TABLE
-  fn = conf.GetPath("symbol_table", "");
+  fn = conf.GetPathOrElse("symbol_table", "");
   if (fn == "") {
     status_vn = pocketkaldi::Status::Corruption(pocketkaldi::util::Format(
         "Unable to find key 'symbol_table' in {}",
@@ -248,7 +213,6 @@ void pk_process(pk_t *recognizer, pk_utterance_t *utt) {
   pk_decodable_init(
       &decodable,
       recognizer->am,
-      recognizer->trans_model,
       0.1,
       &feats);
   t = clock() - t;

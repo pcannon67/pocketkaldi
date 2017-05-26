@@ -10,18 +10,19 @@
 #include "transition.h"
 #include "matrix.h"
 
+using pocketkaldi::AcousticModel;
+
 // Used in decoder
 typedef struct pk_decodable_t {
-  pk_transition_t *trans_model;
   pk_matrix_t log_prob;
+  AcousticModel *am;
 } pk_decodable_t;
 
 // Initialize the decodable struct
 POCKETKALDI_EXPORT
 void pk_decodable_init(
     pk_decodable_t *self,
-    pk_am_t *am,
-    pk_transition_t *trans_model,
+    AcousticModel *am,
     float prob_scale,
     const pk_matrix_t *feats);
 

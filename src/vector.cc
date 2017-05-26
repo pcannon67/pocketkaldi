@@ -5,6 +5,7 @@
 #include <cblas.h>
 #include <stdlib.h>
 #include <string.h>
+#include "util.h"
 
 void pk_vector_init(pk_vector_t *self, int dim, float fill_with) {
   self->dim = dim;
@@ -373,11 +374,47 @@ void VectorBase<float>::AddVec(const float alpha, const VectorBase<float> &v);
 template
 void VectorBase<double>::AddVec(const double alpha, const VectorBase<float> &v);
 
+template<typename Real>
+Status Vector<Real>::Read(util::ReadableFile *fd) {
+  static const char *kSectionName = "VEC0";
+  Status status;
+
+  // Read section name
+  status = fd->ReadAndVerifyString(kSectionName);
+  if (!status.ok()) return status;
+
+  // Section size
+  int32_t section_size;
+  status = fd->ReadValue<int32_t>(&section_size);
+  if (!status.ok()) return status;
+
+  // Dimension
+  int32_t dim;
+  status = fd->ReadValue<int32_t>(&dim);
+  if (!status.ok()) return status;
+  if (dim * sizeof(Real) + 4 != section_size) {
+    return Status::Corruption(util::Format(
+        "section_size = {} * {} + 4 expected, but {} found: {}",
+        dim,
+        sizeof(Real),
+        section_size,
+        fd->filename()));
+  }
+
+  // Read data
+  Resize(dim, kUndefined);
+  status = fd->Read(Vector<Real>::Data(), dim * sizeof(Real));
+  if (!status.ok()) return status;
+
+  return Status::OK();
+}
 
 template class Vector<float>;
 template class VectorBase<float>;
 template class Vector<double>;
 template class VectorBase<double>;
+template class Vector<int32_t>;
+template class VectorBase<int32_t>;
 
 
 }  // namespace pocketkaldi

@@ -19,7 +19,7 @@ void TestConf() {
   assert(status.ok());
 
   // Get path of test_conf.txt
-  std::string path = conf.GetPath("TestConf", "");
+  std::string path = conf.GetPathOrElse("TestConf", "");
   assert(path != "");
 
   // Check the path
@@ -29,6 +29,10 @@ void TestConf() {
   assert(status.ok());
   assert(fd.ReadLine(&line, &status));
   assert(line == "Success!");
+
+  // Get integer
+  int conf_int = conf.GetIntegerOrElse("int_val", 233);
+  assert(conf_int == 1);
 }
 
 int main() {
