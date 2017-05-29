@@ -135,7 +135,7 @@ double Decoder::GetCutoff(float *adaptive_beam, Token **best_tok) {
   uint64_t next_random = kCutoffRandSeed;
 
   // Probability of sample a cost into self->costs
-  float sample_prob = kCutoffSamples / (float)toks_.size();
+  float sample_prob = kCutoffSamples / (float)prev_toks_.size();
   
   for (Token *tok : prev_toks_) {
     // Random sample costs from beam. To be consistant even in multi-thread
@@ -158,7 +158,15 @@ double Decoder::GetCutoff(float *adaptive_beam, Token **best_tok) {
   // Here we guess the cutoff weight to limit the prev_toks_ to beam size
   if (prev_toks_.size() > kBeamSize) {
     int cutoff_idx = costs_.size() * kBeamSize / prev_toks_.size();
-    std::nth_element(costs_.begin(), costs_.end(), costs_.begin() + cutoff_idx);
+    std::nth_element(costs_.begin(), costs_.begin() + cutoff_idx, costs_.end());
+    PK_DEBUG(util::Format(
+        "Cutoff: total = {}, cutoff_idx = {}, cutoff = {},{},{},{}",
+        costs_.size(),
+        cutoff_idx,
+        costs_[cutoff_idx - 3],
+        costs_[cutoff_idx - 2],
+        costs_[cutoff_idx - 1],
+        costs_[cutoff_idx]));
     max_active_cutoff = costs_[cutoff_idx];
   }
 
@@ -218,12 +226,15 @@ float Decoder::ProcessEmitting(pk_decodable_t *decodable) {
   state_idx_.Clear();
 
   // Swap toks_ and empty prev_toks_
+  PK_DEBUG(util::Format("toks_.size() = {}", toks_.size()));
   toks_.swap(prev_toks_);
 
   // Calculate beam_cutoff of beam
   float adaptive_beam = INFINITY;
   Token *best_tok = 0;
   float weight_cutoff = GetCutoff(&adaptive_beam, &best_tok);
+  PK_DEBUG(util::Format("weight_cutoff = {}", weight_cutoff));
+  PK_DEBUG(util::Format("adaptive_beam = {}", adaptive_beam));
 
   // This is the cutoff we use after adding in the log-likes (i.e.
   // for the next frame).  This is a bound on the cutoff we will use
@@ -310,6 +321,8 @@ Decoder::Hypothesis Decoder::BestPath() {
 
   // Get all output labels from best_tok
   Token *best_tok = toks_[best_idx];
+  PK_DEBUG(util::Format("best_tok.state = {}", best_tok->state()));
+  PK_DEBUG(util::Format("best_tok.cost = {}", best_tok->cost()));
   OLabel *best_olabel = best_tok->olabel();
   OLabel *olabel = best_olabel;
   while (olabel != nullptr) {

@@ -12,6 +12,7 @@
 #include "pocketkaldi.h"
 #include "util.h"
 #include "vector.h"
+#include "gemm.h"
 
 typedef struct pk_vector_t pk_vector_t;
 
@@ -80,7 +81,7 @@ class MatrixBase {
   };
 
   /// Returns number of rows (or zero for emtpy matrix).
-  inline int  NumRows() const { return num_rows_; }
+  inline int NumRows() const { return num_rows_; }
 
   /// Returns number of columns (or zero for emtpy matrix).
   inline int NumCols() const { return num_cols_; }
@@ -98,6 +99,9 @@ class MatrixBase {
 
   /// Stride (distance in memory between each row).  Will be >= NumCols.
   inline int Stride() const {  return stride_; }
+
+  /// Sets to random values between 0 and 1
+  void SetRand();
 
   /// Indexing operator, non-const
   /// (only checks sizes if compiled with -DKALDI_PARANOID)
@@ -276,6 +280,13 @@ void SimpleMatMat(
     const MatrixBase<Real> &A,
     const MatrixBase<Real> &B,
     MatrixBase<Real> *C);
+
+// C <- A * B
+void MatMat(
+    const MatrixBase<float> &A,
+    const MatrixBase<float> &B,
+    MatrixBase<float> *C,
+    GEMM<float> *sgemm);
 
 }  // namespace pocketkaldi
 

@@ -5,6 +5,7 @@
 
 #include "matrix.h"
 #include "util.h"
+#include "gemm.h"
 
 #define PK_NNET_SECTION "NNT0"
 #define PK_NNET_LAYER_SECTION "LAY0"
@@ -44,7 +45,9 @@ class LinearLayer : public Layer {
  public:
   // Initialize the linear layer with parameter W and b. It just copies the
   // values from W and b.
-  LinearLayer(const MatrixBase<float> &W, const VectorBase<float> &b);
+  LinearLayer(
+      const MatrixBase<float> &W,
+      const VectorBase<float> &b);
 
   void Propagate(
       const MatrixBase<float> &in,

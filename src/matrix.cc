@@ -10,6 +10,7 @@ extern "C" {
 #include <cblas.h>
 }
 #include "util.h"
+#include "gemm.h"
 
 void pk_matrix_init(pk_matrix_t *self, int nrow, int ncol) {
   self->nrow = nrow;
@@ -107,21 +108,6 @@ void pk_matrix_matmat(
     pk_matrix_t *C) {
   assert(A->nrow == B->nrow && A->ncol == C->nrow && B->ncol == C->ncol &&
          "pk_matrix_matmat: matrix shape mismatch");
-  cblas_sgemm(
-      CblasColMajor,
-      CblasTrans,
-      CblasNoTrans,
-      A->ncol,
-      B->ncol,
-      A->nrow,
-      1.0,
-      A->data,
-      A->nrow,
-      B->data,
-      B->nrow,
-      0.0,
-      C->data,
-      C->nrow);
 }
 
 void pk_matrix_copy(pk_matrix_t *dest, const pk_matrix_t *src) {
@@ -387,6 +373,14 @@ void MatrixBase<Real>::SetZero() {
       memset(data_ + row*stride_, 0, sizeof(Real)*num_cols_);
 }
 
+template<typename Real>
+void MatrixBase<Real>::SetRand() {
+  for (int row = 0; row < num_rows_; row++) {
+    for (int col = 0; col < num_cols_; col++) {
+      (*this)(row, col) = static_cast<Real>(rand()) / RAND_MAX;
+    }
+  }
+}
 
 template class Matrix<float>;
 template class Matrix<double>;
@@ -420,5 +414,25 @@ void SimpleMatMat<float>(
     const MatrixBase<float> &A,
     const MatrixBase<float> &B,
     MatrixBase<float> *C);
+
+void MatMat(
+    const MatrixBase<float> &A,
+    const MatrixBase<float> &B,
+    MatrixBase<float> *C,
+    GEMM<float> *sgemm) {
+  assert(B.NumCols() == C->NumCols());
+  assert(A.NumRows() == C->NumRows());
+  assert(A.NumCols() == B.NumRows());
+
+  sgemm->Gemm(
+      A.NumRows(),
+      B.NumCols(),
+      A.NumCols(),
+      1.0f,
+      A.Data(), A.Stride(), 1,
+      B.Data(), B.Stride(), 1,
+      0.0f,
+      C->Data(), C->Stride(), 1);
+}
 
 }  // namespace pocketkaldi

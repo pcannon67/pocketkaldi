@@ -225,7 +225,6 @@ void Fbank::ComputeFrame(
 
   // Compute FFT using split-radix algorithm. It just overwrites the data in
   // window 
-  PK_DEBUG(util::Format("window->Dim() = {}", window->Dim()));
   pk_srfft_compute(
       &srfft_,
       window->Data(),

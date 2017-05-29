@@ -1,9 +1,9 @@
 ACLOCAL_AMFLAGS = -I m4
 AUTOMAKE_OPTIONS = gnu subdir-objects foreign
-AM_CFLAGS = -std=c99
-AM_CXXFLAGS = -I$(top_srcdir)/../kaldi/src -I$(top_srcdir)/../kaldi/tools/openfst/src/include/ -I$(top_srcdir)/../kaldi/tools/ATLAS/include/ -I$(top_srcdir)/src -g -fPIC -std=c++11
-AM_LDFLAGS = -pthread -L/usr/local/cuda-8.0/lib64/
-LIBS = -ldl -lm -lblas
+AM_CFLAGS = 
+AM_CXXFLAGS = -I$(top_srcdir)/src -g -fPIC -std=c++11
+AM_LDFLAGS = -pthread 
+LIBS = -lm
 
 bin_PROGRAMS = pocketkaldi
 pocketkaldi_SOURCES = src/main.cc
@@ -25,7 +25,9 @@ libpocketkaldi_a_SOURCES = src/util.cc \
                            src/symbol_table.cc \
                            src/pocketkaldi.cc \
                            src/hashtable.cc \
-                           src/configuration.cc
+                           src/configuration.cc \
+                           src/gemm.cc \
+                           src/gemm_haswell.cc
 
 pocketkaldi_LDADD = libpocketkaldi.a -lstdc++
 
@@ -58,7 +60,8 @@ TESTS = list_test \
         symbol_table_test \
         hashtable_test \
         configuration_test \
-        pool_test
+        pool_test \
+        gemm_test
 
 check_PROGRAMS = list_test \
                  fst_test \
@@ -69,7 +72,8 @@ check_PROGRAMS = list_test \
                  symbol_table_test \
                  hashtable_test \
                  configuration_test \
-                 pool_test
+                 pool_test \
+                 gemm_test
 
 configuration_test_SOURCES = test/configuration_test.cc
 configuration_test_CXXFLAGS = $(AM_CXXFLAGS) -std=c++11 -I$(top_srcdir)/src -DTESTDIR=\"$(top_srcdir)/test/\"
@@ -78,6 +82,10 @@ configuration_test_LDADD = libpocketkaldi.a
 hashtable_test_SOURCES = test/hashtable_test.cc
 hashtable_test_CXXFLAGS = $(AM_CXXFLAGS) -std=c++11 -I$(top_srcdir)/src
 hashtable_test_LDADD = libpocketkaldi.a
+
+gemm_test_SOURCES = test/gemm_test.cc
+gemm_test_CXXFLAGS = $(AM_CXXFLAGS) -std=c++11 -I$(top_srcdir)/src
+gemm_test_LDADD = libpocketkaldi.a
 
 list_test_SOURCES = test/list_test.cc
 list_test_CXXFLAGS = $(AM_CXXFLAGS) -std=c++11 -I$(top_srcdir)/src
